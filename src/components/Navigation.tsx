@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: "📊" },
+  { href: "/", label: "Home", icon: "🏠" },
   { href: "/search", label: "Search", icon: "🔎" },
+  { href: "/incidents", label: "Incidents", icon: "📋" },
   { href: "/groups", label: "Groups", icon: "📁" },
   { href: "/knowledge", label: "Knowledge", icon: "📝" },
-  { href: "/tickets", label: "Tickets", icon: "🎫" },
-  { href: "/keywords", label: "Quick Lookup", icon: "🔑" },
+  { href: "/quick-lookup", label: "Quick Lookup", icon: "🔑" },
 ];
 
 export function Navigation() {
@@ -49,9 +49,9 @@ export function Navigation() {
       >
         <div className="p-6 border-b border-gray-200">
           <h1 className="text-lg font-bold text-gray-900 leading-tight">
-            🛡️ Incident KB
+            🛡️ T24 Knowledge Archive
           </h1>
-          <p className="text-xs text-gray-500 mt-1">T24/Temenos Knowledge Base</p>
+          <p className="text-xs text-gray-500 mt-1">Incident Archive & Search</p>
         </div>
         <nav className="p-4 space-y-1">
           {navItems.map((item) => {

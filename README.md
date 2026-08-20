@@ -41,7 +41,52 @@ npx tsx scripts/import-xlsx.ts /path/to/Incident_Knowledge_Base_v3.xlsx
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:bililign@bilux:~$ 
+bililign@bilux:~$ omniroute
+
+   ____                  _ ____              _
+   / __ \\                (_) __ \\            | |
+  | |  | |_ __ ___  _ __ _| |__) |___  _   _| |_ ___
+  | |  | | '_ ` _ \\| '_ \\ |  _  // _ \\| | | | __/ _ \\
+  | |__| | | | | | | | | | | | \\ \\ (_) | |_| | ||  __/
+   \\____/|_| |_| |_|_| |_|_|_|  \\_\\___/ \\__,_|\\__\\___|
+
+  ⏳ Starting server...
+
+▲ Next.js 16.2.4
+- Local:         http://localhost:20128
+- Network:       http://0.0.0.0:20128
+✓ Ready in 0ms
+
+  ✔ OmniRoute is running!
+
+    Dashboard:  http://localhost:20128
+    API Base:   http://localhost:20128/v1
+
+    Point your CLI tool (Cursor, Cline, Codex) to:
+    http://localhost:20128/v1
+
+    Press Ctrl+C to stop
+  
+Failed to prepare server TypeError: An error occurred while loading instrumentation hook: e.util.markAsUncloneable is not a function
+    at ignore-listed frames
+TypeError: An error occurred while loading instrumentation hook: e.util.markAsUncloneable is not a function
+    at ignore-listed frames
+⨯ unhandledRejection:  TypeError: An error occurred while loading instrumentation hook: e.util.markAsUncloneable is not a function
+    at ignore-listed frames
+Failed to prepare server TypeError: An error occurred while loading instrumentation hook: e.util.markAsUncloneable is not a function
+    at ignore-listed frames
+TypeError: An error occurred while loading instrumentation hook: e.util.markAsUncloneable is not a function
+    at ignore-listed frames
+TypeError: An error occurred while loading instrumentation hook: e.util.markAsUncloneable is not a function
+    at ignore-listed frames
+TypeError: An error occurred while loading instrumentation hook: e.util.markAsUncloneable is not a function
+    at ignore-listed frames
+TypeError: An error occurred while loading instrumentation hook: e.util.markAsUncloneable is not a function
+    at ignore-listed frames
+
+
+3000](http://localhost:3000)
 
 ## Pages
 

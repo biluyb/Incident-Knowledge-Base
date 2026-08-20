@@ -119,7 +119,7 @@ export default function GroupDetailPage() {
                   {group.tickets.map((ticket: any) => (
                     <tr key={ticket.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="px-4 py-3">
-                        <Link href={`/tickets/${ticket.id}`} className="text-blue-600 hover:underline font-mono text-xs">
+                        <Link href={`/incidents/${ticket.id}`} className="text-blue-600 hover:underline font-mono text-xs">
                           {ticket.reference}
                         </Link>
                       </td>

@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { SearchBox } from "@/components/ui/SearchBox";
 import { Badge } from "@/components/ui/Badge";
 import type { SearchResult } from "@/lib/types";
 
-export default function SearchPage() {
+function SearchContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const q = searchParams.get("q") || "";
@@ -134,7 +134,7 @@ export default function SearchPage() {
                     </div>
                     <h3 className="text-base font-semibold text-gray-900 mt-1">
                       {r.type === "ticket" ? (
-                        <Link href={`/tickets/${r.id}`} className="hover:text-blue-600">
+                        <Link href={`/incidents/${r.id}`} className="hover:text-blue-600">
                           {r.title}
                         </Link>
                       ) : (
@@ -161,10 +161,10 @@ export default function SearchPage() {
                       </Link>
                     ) : (
                       <Link
-                        href={`/tickets/${r.id}`}
+                        href={`/incidents/${r.id}`}
                         className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors"
                       >
-                        View Ticket
+                        View Incident
                       </Link>
                     )}
                   </div>
@@ -175,5 +175,23 @@ export default function SearchPage() {
         </>
       ) : null}
     </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-gray-900">Search</h1>
+        <div className="h-12 bg-gray-100 rounded-xl animate-pulse" />
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-32 bg-gray-100 rounded-xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+    }>
+      <SearchContent />
+    </Suspense>
   );
 }

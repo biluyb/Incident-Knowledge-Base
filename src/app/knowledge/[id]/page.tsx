@@ -81,16 +81,16 @@ export default function KnowledgeArticlePage() {
         )}
       </div>
 
-      {/* Main content - two column layout on desktop */}
+      {/* Main content — SRS §16 Problem/Solution separation */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Primary content */}
         <div className="lg:col-span-2 space-y-6">
-          <Section title="Symptoms" content={article.symptoms} />
+          <Section title="Problem / Symptoms" content={article.symptoms} />
           <Section title="Root Cause" content={article.root_cause} />
-          <Section title="Diagnostic Data" content={article.diagnostic_data} copyable />
+          <Section title="Diagnostic Information" content={article.diagnostic_data} copyable />
           <Section title="Immediate Fix" content={article.immediate_fix} />
           <Section title="Permanent Fix" content={article.permanent_fix} />
-          <Section title="Prevention / Lessons Learned" content={article.prevention} />
+          <Section title="Prevention" content={article.prevention} />
 
           {/* Verification as checklist */}
           {article.verification && (
@@ -110,18 +110,22 @@ export default function KnowledgeArticlePage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Related Tickets */}
+          {/* Related Tickets — SRS §25 */}
           {article.related_tickets && article.related_tickets.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">Related Tickets</h3>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Historical Incidents</h3>
+              <p className="text-xs text-gray-400 mb-3">Previous cases solved by this knowledge</p>
               <div className="space-y-2">
                 {article.related_tickets.map((t: any) => (
                   <Link
                     key={t.id}
-                    href={`/tickets/${t.id}`}
-                    className="block text-sm text-blue-600 hover:underline font-mono"
+                    href={`/incidents/${t.id}`}
+                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors"
                   >
-                    {t.reference}
+                    <span className="text-sm text-blue-600 hover:underline font-mono">{t.reference}</span>
+                    {t.priority && (
+                      <Badge variant={t.priority?.toLowerCase()}>{t.priority}</Badge>
+                    )}
                   </Link>
                 ))}
               </div>

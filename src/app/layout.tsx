@@ -3,8 +3,8 @@ import "./globals.css";
 import { Navigation } from "@/components/Navigation";
 
 export const metadata: Metadata = {
-  title: "Incident Knowledge Base",
-  description: "T24/Temenos Incident Search & Troubleshooting System",
+  title: "T24 Incident Knowledge Archive",
+  description: "Searchable archive of previously solved T24/Temenos incidents, root causes, solutions, and lessons learned",
 };
 
 export default function RootLayout({
