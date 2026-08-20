@@ -44,7 +44,7 @@ export default function KeywordsPage() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search keywords..."
-        className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+        className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg bg-white"
       />
 
       {loading ? (
@@ -66,7 +66,7 @@ export default function KeywordsPage() {
                 {groupCode !== "Unassigned" ? (
                   <Link
                     href={`/groups/${groupCode}`}
-                    className="text-sm font-bold text-blue-600 hover:underline"
+                    className="text-sm font-bold hover:underline"
                   >
                     Group {groupCode}
                   </Link>
@@ -80,7 +80,7 @@ export default function KeywordsPage() {
                   <Link
                     key={kw.id}
                     href={`/search?q=${encodeURIComponent(kw.keyword)}`}
-                    className="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-700 text-sm rounded-lg hover:bg-blue-100 transition-colors border border-blue-100"
+                    className="inline-flex items-center px-3 py-1.5 text-sm rounded-lg transition-colors border border-gray-200 hover:bg-gray-100"
                   >
                     {kw.keyword}
                   </Link>

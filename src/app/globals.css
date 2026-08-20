@@ -1,9 +1,128 @@
 @import "tailwindcss";
 
+/* ============================================================
+   Theme — Tsehay Bank Incident Knowledge Base
+   ============================================================ */
+:root {
+  --primary: #215B30;
+  --primary-light: #2d7a42;
+  --primary-lighter: #e8f5ec;
+  --secondary: #FEC80C;
+  --secondary-light: #fdd835;
+}
+
 body {
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
+/* Focus ring uses primary color */
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   Typography
+   ============================================================ */
+h1, h2, h3, h4, h5, h6 {
+  color: #111827;
+}
+
+/* ============================================================
+   Form controls — consistent border radius and focus
+   ============================================================ */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+select,
+textarea {
+  border-color: #d1d5db;
+  border-radius: 0.5rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(33, 91, 48, 0.1);
+  outline: none;
+}
+
+/* ============================================================
+   Buttons
+   ============================================================ */
+.btn-primary {
+  background-color: var(--primary);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-light);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background-color: white;
+  color: #374151;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid #d1d5db;
+  transition: background-color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-secondary:hover {
+  background-color: #f9fafb;
+}
+
+/* ============================================================
+   Sidebar active state
+   ============================================================ */
+.nav-active {
+  background-color: var(--primary-lighter);
+  color: var(--primary);
+  font-weight: 600;
+  border: 1px solid rgba(33, 91, 48, 0.15);
+}
+
+/* ============================================================
+   Link styles
+   ============================================================ */
+a {
+  color: var(--primary);
+}
+
+/* ============================================================
+   Table compact rows
+   ============================================================ */
+.table-row-compact {
+  line-height: 1.25;
+}
+
+/* ============================================================
+   Line clamps
+   ============================================================ */
 .line-clamp-2 {
   overflow: hidden;
   display: -webkit-box;
@@ -16,4 +135,25 @@ body {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
+}
+
+/* ============================================================
+   Scrollbar styling
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }

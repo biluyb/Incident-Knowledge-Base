@@ -3,8 +3,8 @@ import "./globals.css";
 import { Navigation } from "@/components/Navigation";
 
 export const metadata: Metadata = {
-  title: "T24 Incident Knowledge Archive",
-  description: "Searchable archive of previously solved T24/Temenos incidents, root causes, solutions, and lessons learned",
+  title: "Tsehay Bank Incident Knowledge Base",
+  description: "Historical technical incident archive for Tsehay Bank — search previously solved problems, root causes, and solutions",
 };
 
 export default function RootLayout({

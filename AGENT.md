@@ -1,4 +1,4 @@
-# TCSP Incident Knowledge Base
+# Tsehay Bank Incident Knowledge Base
 
 ## 1. Project Purpose
 
@@ -30,7 +30,18 @@ Solve Current Problem
 Document Historical Incident (+ Add Incident)
 ```
 
-## 3. Product Principles
+## 3. UI/UX Theme
+
+| Token | Value |
+|---|---|
+| Primary | #215B30 (green) |
+| Secondary | #FEC80C (yellow) |
+| Product Name | Tsehay Bank Incident Knowledge Base |
+
+CSS variables defined in `globals.css`: `--primary`, `--secondary`.
+All focus rings, active nav states, and primary buttons use the primary green.
+
+## 4. Product Principles
 
 - **Search first** — the homepage is a search box
 - **Fast navigation** — minimal clicks to reach a solution
@@ -175,7 +186,7 @@ Each group displays relevant fields on the incident creation/edit form:
 - **G07**: Limit Type, Overdraft Type, Restriction Type
 - **G08**: Platform Component, Configuration, Service, Issue Type
 
-## 9. Completed Features
+## 10. Completed Features
 
 - [x] Excel import — all 4 sheets (Group_Summary, All_Tickets_Grouped, Quick_Lookup, Sub_Types)
 - [x] PostgreSQL schema with full-text search + trigram indexes
@@ -203,14 +214,40 @@ Each group displays relevant fields on the incident creation/edit form:
 - [x] Sorting on incident lists (date, reference, priority, severity)
 - [x] Subgroup filtering on group detail page
 - [x] Dynamic group dropdowns — all filters use API-fetched groups
+- [x] Tsehay Bank branding (sidebar, title, metadata)
+- [x] Brand theme (primary #215B30, secondary #FEC80C)
+- [x] Incident listing: removed Priority/Severity, 15 rows/page, compact
+- [x] Group detail: subgroup hierarchy per §13
+- [x] Incident creation: sectioned form per §14
+- [x] Consistent focus states, buttons, form controls
 
-## 10. Current Development Phase
+## 11. Current Development Phase
 
 **Phase 2: Classification & Navigation** — COMPLETE
 
 8-group taxonomy with 30 subgroups, all 237 incidents reclassified, edit/sort/filter working.
 
-## 11. Recent Changes
+## 12. Recent Changes
+
+### 2026-08-20 — UI/UX Overhaul
+
+Implemented:
+- Tsehay Bank branding throughout (sidebar, title, metadata)
+- Brand colors: primary #215B30, secondary #FEC80C
+- CSS theme variables in globals.css
+- Navigation: SVG icons, primary green active states, cleaner layout
+- Incident listing: removed Priority/Severity columns, 15 rows/page, compact density
+- Group listing: cleaner cards with description, incident counts
+- Group detail: subgroup hierarchy with cards, compact incident table, 15 rows
+- Search: cleaner filters, consistent result cards
+- Incident detail: better typography, organized sections
+- Incident creation: sectioned form (Incident Info, Classification, Technical Details)
+- Incident edit: same sectioned layout
+- Empty states: helpful messages with guidance
+- Loading states: skeleton animations
+- Focus states: consistent primary green focus rings
+- Rounded-lg corners throughout (removed rounded-xl)
+- Responsive improvements: horizontal scroll on tables
 
 ### 2026-08-20 — Classification v4 & Full Feature Set
 
@@ -262,7 +299,7 @@ Implemented:
 - 21 reference links imported
 - 119 ticket-article relationships linked
 
-## 12. Known Issues
+## 13. Known Issues
 
 1. **No authentication** — users table is empty, no login system
 2. **No admin interface** — groups, subtypes cannot be managed via UI (§5, §6 need + New Group / + New Subgroup buttons)
@@ -274,7 +311,7 @@ Implemented:
 8. **Excel re-import** — keywords table was cleared during migration, needs re-import from Excel v4
 9. **No Excel export** — only import exists
 
-## 13. Important Design Decisions
+## 14. Important Design Decisions
 
 - **Incidents are never hard deleted** — only archived (not yet implemented)
 - **Knowledge articles are linked to subtypes, not individual tickets** — one article covers a problem type
@@ -284,7 +321,7 @@ Implemented:
 - **No AI or external services in v1** — PostgreSQL search is sufficient for 237 incidents
 - **The Sub_Types sheet is the richest data source** — contains root cause, diagnosis, fix, verification, contacts, references
 
-## 14. Migration Status
+## 15. Migration Status
 
 | Source | Target | Records | Status |
 |---|---|---|---|
@@ -297,7 +334,7 @@ Implemented:
 | Sub_Types | references_table | 21 | ✓ Imported |
 | Auto-generated | ticket_articles | 119 | ✓ Linked |
 
-## 15. Next Tasks (Priority Order)
+## 16. Next Tasks (Priority Order)
 
 1. **Re-import keywords** — keywords table was cleared during migration
 2. **File upload support** — §4: attach screenshots, logs, PDFs to incidents
@@ -309,7 +346,7 @@ Implemented:
 8. **Audit trail** — track changes (§21)
 9. **Excel export** — export incidents and knowledge articles
 
-## 16. Development Rules
+## 17. Development Rules
 
 1. **Read AGENT.md before every new session**
 2. **Search is the most important feature** — optimize for findability

@@ -91,7 +91,6 @@ export default function EditIncidentPage() {
   });
   const [dynamicFields, setDynamicFields] = useState<Record<string, string>>({});
 
-  // Load groups and ticket data
   useEffect(() => {
     Promise.all([
       fetch("/api/groups").then((r) => r.json()),
@@ -102,7 +101,6 @@ export default function EditIncidentPage() {
         if (ticketData.error) {
           setError(ticketData.error);
         } else {
-          // Find matching group by code
           const matchedGroup = groupsData.find(
             (g: Group) => g.code === ticketData.group_code || g.id === ticketData.group_id
           );
@@ -119,11 +117,10 @@ export default function EditIncidentPage() {
           setDynamicFields(ticketData.custom_fields || {});
         }
       })
-      .catch((err) => setError("Failed to load incident"))
+      .catch(() => setError("Failed to load incident"))
       .finally(() => setLoading(false));
   }, [id]);
 
-  // Fetch subgroups when group changes (§7)
   useEffect(() => {
     if (!form.group_id) {
       setSubgroups([]);
@@ -167,7 +164,7 @@ export default function EditIncidentPage() {
       }
 
       router.push(`/incidents/${id}`);
-    } catch (err) {
+    } catch {
       setError("Network error. Please try again.");
     } finally {
       setSubmitting(false);
@@ -178,21 +175,22 @@ export default function EditIncidentPage() {
     return (
       <div className="max-w-2xl space-y-4">
         <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
-        <div className="h-64 bg-gray-100 rounded-xl animate-pulse" />
+        <div className="h-64 bg-gray-100 rounded-lg animate-pulse" />
       </div>
     );
   }
 
   return (
     <div className="max-w-2xl space-y-6">
+      <div className="flex items-center gap-2 text-sm text-gray-500">
+        <Link href={`/incidents/${id}`} className="hover:underline" style={{ color: "var(--primary)" }}>{form.reference}</Link>
+        <span>›</span>
+        <span className="text-gray-900 font-medium">Edit</span>
+      </div>
+
       <div>
-        <Link href={`/incidents/${id}`} className="text-sm text-blue-600 hover:underline mb-2 inline-block">
-          ← Back to Incident
-        </Link>
         <h1 className="text-2xl font-bold text-gray-900">Edit Incident</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Update incident details. Created date and reference are preserved.
-        </p>
+        <p className="text-sm text-gray-500 mt-1">Update incident details. Created date and reference are preserved.</p>
       </div>
 
       {error && (
@@ -202,31 +200,29 @@ export default function EditIncidentPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Incident Details</h2>
-
+        {/* Section: Incident Information */}
+        <div className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Incident Information</h2>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Ticket Reference</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Reference</label>
             <input
               type="text"
               value={form.reference}
               onChange={(e) => setForm({ ...form, reference: e.target.value })}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm"
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Summary</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
             <input
               type="text"
               value={form.summary}
               onChange={(e) => setForm({ ...form, summary: e.target.value })}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
             />
           </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Group</label>
@@ -234,7 +230,7 @@ export default function EditIncidentPage() {
                 value={form.group_id}
                 onChange={(e) => setForm({ ...form, group_id: e.target.value })}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
               >
                 <option value="">Select group...</option>
                 {groups.map((g) => (
@@ -248,25 +244,27 @@ export default function EditIncidentPage() {
                 value={form.subgroup_id}
                 onChange={(e) => setForm({ ...form, subgroup_id: e.target.value })}
                 disabled={!form.group_id || subgroups.length === 0}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-50"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-50"
               >
-                <option value="">
-                  {subgroups.length === 0 ? "No subgroups" : "Select subgroup..."}
-                </option>
+                <option value="">{subgroups.length === 0 ? "No subgroups" : "Select subgroup..."}</option>
                 {subgroups.map((sg) => (
                   <option key={sg.id} value={sg.id}>{sg.name}</option>
                 ))}
               </select>
             </div>
           </div>
+        </div>
 
+        {/* Section: Classification */}
+        <div className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Classification</h2>
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
               <select
                 value={form.priority}
                 onChange={(e) => setForm({ ...form, priority: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
               >
                 <option value="Critical">Critical</option>
                 <option value="High">High</option>
@@ -279,7 +277,7 @@ export default function EditIncidentPage() {
               <select
                 value={form.severity}
                 onChange={(e) => setForm({ ...form, severity: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
               >
                 <option value="Severity 1">Severity 1</option>
                 <option value="Severity 2">Severity 2</option>
@@ -293,28 +291,25 @@ export default function EditIncidentPage() {
                 type="text"
                 value={form.requester}
                 onChange={(e) => setForm({ ...form, requester: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
               />
             </div>
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Root Cause Category</label>
             <input
               type="text"
               value={form.root_cause_category}
               onChange={(e) => setForm({ ...form, root_cause_category: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
             />
           </div>
         </div>
 
-        {/* Dynamic group-specific fields */}
+        {/* Group-Specific Fields */}
         {groupDynamicFields.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-              Group-Specific Fields
-            </h2>
+          <div className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Technical Details</h2>
             <div className="grid grid-cols-2 gap-4">
               {groupDynamicFields.map((field) => (
                 <div key={field.key}>
@@ -324,14 +319,14 @@ export default function EditIncidentPage() {
                       value={dynamicFields[field.key] || ""}
                       onChange={(e) => setDynamicFields({ ...dynamicFields, [field.key]: e.target.value })}
                       rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                     />
                   ) : (
                     <input
                       type="text"
                       value={dynamicFields[field.key] || ""}
                       onChange={(e) => setDynamicFields({ ...dynamicFields, [field.key]: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                     />
                   )}
                 </div>
@@ -341,16 +336,10 @@ export default function EditIncidentPage() {
         )}
 
         <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={submitting}
-            className="px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-          >
+          <button type="submit" disabled={submitting} className="btn-primary">
             {submitting ? "Saving..." : "Save Changes"}
           </button>
-          <Link href={`/incidents/${id}`} className="px-4 py-2.5 text-sm text-gray-600 hover:text-gray-900">
-            Cancel
-          </Link>
+          <Link href={`/incidents/${id}`} className="btn-secondary">Cancel</Link>
         </div>
       </form>
     </div>

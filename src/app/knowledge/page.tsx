@@ -36,10 +36,7 @@ export default function KnowledgePage() {
             Reusable solutions for T24/Temenos incident types
           </p>
         </div>
-        <Link
-          href="/knowledge/new"
-          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
-        >
+        <Link href="/knowledge/new" className="btn-primary">
           + Add Knowledge
         </Link>
       </div>
@@ -48,7 +45,7 @@ export default function KnowledgePage() {
         <select
           value={groupFilter}
           onChange={(e) => setGroupFilter(e.target.value)}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+          className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white"
         >
           <option value="">All Groups</option>
           {groups.map((g) => (
@@ -74,7 +71,7 @@ export default function KnowledgePage() {
             <Link
               key={article.id}
               href={`/knowledge/${article.id}`}
-              className="bg-white rounded-xl border border-gray-200 p-5 hover:border-blue-300 hover:shadow-md transition-all"
+              className="bg-white rounded-lg border border-gray-200 p-5 hover:border-gray-300 hover:shadow-sm transition-all"
             >
               <div className="flex items-center gap-2 mb-2">
                 {article.subtype_code && (

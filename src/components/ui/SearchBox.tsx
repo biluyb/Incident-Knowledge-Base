@@ -49,12 +49,12 @@ export function SearchBox({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={placeholder}
-          className={`w-full ${sizeClasses[size]} pl-12 pr-4 bg-white border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all`}
+          className={`w-full ${sizeClasses[size]} pl-12 pr-4 bg-white border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] outline-none transition-all`}
           autoFocus={size === "lg"}
         />
         <button
           type="submit"
-          className="absolute inset-y-0 right-0 px-6 bg-blue-600 text-white rounded-r-xl hover:bg-blue-700 transition-colors font-medium text-sm"
+          className="absolute inset-y-0 right-0 px-6 text-white rounded-r-xl transition-colors font-medium text-sm" style={{ backgroundColor: "var(--primary)" }}
         >
           Search
         </button>

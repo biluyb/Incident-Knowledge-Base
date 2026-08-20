@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { SearchBox } from "@/components/ui/SearchBox";
-import { Badge } from "@/components/ui/Badge";
 import type { SearchResult } from "@/lib/types";
 
 function SearchContent() {
@@ -12,8 +11,6 @@ function SearchContent() {
   const router = useRouter();
   const q = searchParams.get("q") || "";
   const groupFilter = searchParams.get("group") || "";
-  const priorityFilter = searchParams.get("priority") || "";
-  const severityFilter = searchParams.get("severity") || "";
 
   const [results, setResults] = useState<SearchResult[]>([]);
   const [groups, setGroups] = useState<{code: string; name: string}[]>([]);
@@ -33,8 +30,6 @@ function SearchContent() {
     try {
       const params = new URLSearchParams({ q });
       if (groupFilter) params.set("group", groupFilter);
-      if (priorityFilter) params.set("priority", priorityFilter);
-      if (severityFilter) params.set("severity", severityFilter);
 
       const res = await fetch(`/api/search?${params}`);
       const data = await res.json();
@@ -45,7 +40,7 @@ function SearchContent() {
     } finally {
       setLoading(false);
     }
-  }, [q, groupFilter, priorityFilter, severityFilter]);
+  }, [q, groupFilter]);
 
   useEffect(() => {
     doSearch();
@@ -63,7 +58,11 @@ function SearchContent() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Search</h1>
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Search</h1>
+        <p className="text-sm text-gray-500 mt-1">Search incidents, errors, routines, solutions...</p>
+      </div>
 
       <SearchBox initialQuery={q} size="sm" />
 
@@ -72,67 +71,44 @@ function SearchContent() {
         <select
           value={groupFilter}
           onChange={(e) => updateFilter("group", e.target.value)}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+          className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white"
         >
           <option value="">All Groups</option>
           {groups.map((g) => (
             <option key={g.code} value={g.code}>{g.name}</option>
           ))}
         </select>
-
-        <select
-          value={priorityFilter}
-          onChange={(e) => updateFilter("priority", e.target.value)}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none"
-        >
-          <option value="">All Priorities</option>
-          <option value="critical">Critical</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
-
-        <select
-          value={severityFilter}
-          onChange={(e) => updateFilter("severity", e.target.value)}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none"
-        >
-          <option value="">All Severities</option>
-          <option value="1">Severity 1</option>
-          <option value="2">Severity 2</option>
-          <option value="3">Severity 3</option>
-          <option value="4">Severity 4</option>
-        </select>
       </div>
 
       {/* Results */}
       {loading ? (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 animate-pulse h-32" />
+            <div key={i} className="bg-white rounded-lg border border-gray-200 p-4 animate-pulse h-24" />
           ))}
         </div>
       ) : q && results.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-          <div className="text-4xl mb-4">🔍</div>
-          <p className="text-lg text-gray-600 font-medium">No matching knowledge found.</p>
+        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+          <p className="text-gray-600 font-medium">No matching knowledge found</p>
           <p className="text-sm text-gray-400 mt-2">Try: T24 record name, error message, TSR number, keyword, module name</p>
         </div>
       ) : results.length > 0 ? (
         <>
           <p className="text-sm text-gray-500">{total} result{total !== 1 ? "s" : ""} found</p>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {results.map((r, idx) => (
               <div
                 key={`${r.type}-${r.id}-${idx}`}
-                className="bg-white rounded-xl border border-gray-200 p-5 hover:border-blue-300 transition-colors"
+                className="bg-white rounded-lg border border-gray-200 p-4 hover:border-gray-300 transition-colors"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <Badge variant={r.type === "knowledge" ? "published" : ""}>
-                        {r.type === "knowledge" ? "Knowledge Article" : "Ticket"}
-                      </Badge>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
+                        r.type === "knowledge" ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-100 text-gray-600 border-gray-200"
+                      }`}>
+                        {r.type === "knowledge" ? "Knowledge Article" : "Incident"}
+                      </span>
                       {r.group_code && (
                         <span className="text-xs text-gray-500">{r.group_name || r.group_code}</span>
                       )}
@@ -140,38 +116,28 @@ function SearchContent() {
                         <span className="text-xs text-gray-400">· {r.subtype_code}</span>
                       )}
                     </div>
-                    <h3 className="text-base font-semibold text-gray-900 mt-1">
+                    <h3 className="text-sm font-medium text-gray-900 mt-1">
                       {r.type === "ticket" ? (
-                        <Link href={`/incidents/${r.id}`} className="hover:text-blue-600">
+                        <Link href={`/incidents/${r.id}`} className="hover:underline" style={{ color: "var(--primary)" }}>
                           {r.title}
                         </Link>
                       ) : (
-                        <Link href={`/knowledge/${r.id}`} className="hover:text-blue-600">
+                        <Link href={`/knowledge/${r.id}`} className="hover:underline" style={{ color: "var(--primary)" }}>
                           {r.title}
                         </Link>
                       )}
                     </h3>
                     {r.summary && (
-                      <p className="text-sm text-gray-500 mt-1 line-clamp-2">{r.summary}</p>
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">{r.summary}</p>
                     )}
-                    <div className="flex items-center gap-3 mt-2">
-                      {r.severity && <Badge>{r.severity}</Badge>}
-                      {r.priority && <Badge variant={r.priority.toLowerCase()}>{r.priority}</Badge>}
-                    </div>
                   </div>
                   <div className="flex-shrink-0">
                     {r.type === "knowledge" ? (
-                      <Link
-                        href={`/knowledge/${r.id}`}
-                        className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
-                      >
+                      <Link href={`/knowledge/${r.id}`} className="btn-primary text-xs">
                         View Article
                       </Link>
                     ) : (
-                      <Link
-                        href={`/incidents/${r.id}`}
-                        className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors"
-                      >
+                      <Link href={`/incidents/${r.id}`} className="btn-secondary text-xs">
                         View Incident
                       </Link>
                     )}
@@ -191,10 +157,10 @@ export default function SearchPage() {
     <Suspense fallback={
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-gray-900">Search</h1>
-        <div className="h-12 bg-gray-100 rounded-xl animate-pulse" />
-        <div className="space-y-4">
+        <div className="h-12 bg-gray-100 rounded-lg animate-pulse" />
+        <div className="space-y-3">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-32 bg-gray-100 rounded-xl animate-pulse" />
+            <div key={i} className="h-24 bg-gray-100 rounded-lg animate-pulse" />
           ))}
         </div>
       </div>

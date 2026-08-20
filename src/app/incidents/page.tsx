@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Badge } from "@/components/ui/Badge";
 
 interface Group {
   code: string;
@@ -17,7 +16,6 @@ export default function IncidentsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [group, setGroup] = useState("");
-  const [priority, setPriority] = useState("");
   const [sortField, setSortField] = useState("created_at_ticket");
   const [sortOrder, setSortOrder] = useState("DESC");
 
@@ -32,12 +30,11 @@ export default function IncidentsPage() {
     setLoading(true);
     const params = new URLSearchParams({
       page: String(page),
-      limit: "50",
+      limit: "15",
       sort: sortField,
       order: sortOrder,
     });
     if (group) params.set("group", group);
-    if (priority) params.set("priority", priority);
 
     fetch(`/api/incidents?${params}`)
       .then((r) => r.json())
@@ -48,29 +45,27 @@ export default function IncidentsPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [page, group, priority, sortField, sortOrder]);
+  }, [page, group, sortField, sortOrder]);
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Incidents</h1>
-          <p className="text-sm text-gray-500 mt-1">{total} historical incidents</p>
+          <p className="text-sm text-gray-500 mt-1">Search and browse historical technical incidents.</p>
         </div>
-        <Link
-          href="/incidents/new"
-          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
-        >
+        <Link href="/incidents/new" className="btn-primary">
           + Add Incident
         </Link>
       </div>
 
       {/* Filters + Sort */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <select
           value={group}
           onChange={(e) => { setGroup(e.target.value); setPage(1); }}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+          className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white"
         >
           <option value="">All Groups</option>
           {groups.map((g) => (
@@ -78,85 +73,65 @@ export default function IncidentsPage() {
           ))}
         </select>
         <select
-          value={priority}
-          onChange={(e) => { setPriority(e.target.value); setPage(1); }}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none"
-        >
-          <option value="">All Priorities</option>
-          <option value="critical">Critical</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
-        <select
           value={sortField}
           onChange={(e) => { setSortField(e.target.value); setPage(1); }}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+          className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white"
         >
           <option value="created_at_ticket">Date Created</option>
           <option value="reference">Reference</option>
-          <option value="priority">Priority</option>
-          <option value="severity">Severity</option>
         </select>
         <button
           onClick={() => { setSortOrder(sortOrder === "DESC" ? "ASC" : "DESC"); setPage(1); }}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+          className="btn-secondary text-xs"
         >
           {sortOrder === "DESC" ? "↓ Newest" : "↑ Oldest"}
         </button>
       </div>
 
+      {/* Content */}
       {loading ? (
         <div className="space-y-2">
-          {[...Array(10)].map((_, i) => (
-            <div key={i} className="h-14 bg-gray-100 rounded-lg animate-pulse" />
+          {[...Array(15)].map((_, i) => (
+            <div key={i} className="h-11 bg-gray-100 rounded-lg animate-pulse" />
           ))}
         </div>
       ) : tickets.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-          <div className="text-4xl mb-4">📋</div>
-          <p className="text-lg text-gray-600">No incidents found</p>
+        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+          <p className="text-gray-600 font-medium">No incidents found</p>
+          <p className="text-sm text-gray-400 mt-1">Try different search terms or remove filters.</p>
         </div>
       ) : (
         <>
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Reference</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Summary</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Group</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Subgroup</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Priority</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Severity</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Created</th>
+                    <th className="text-left px-4 py-2 font-medium text-gray-600 text-xs uppercase tracking-wider">Reference</th>
+                    <th className="text-left px-4 py-2 font-medium text-gray-600 text-xs uppercase tracking-wider">Incident</th>
+                    <th className="text-left px-4 py-2 font-medium text-gray-600 text-xs uppercase tracking-wider">Group</th>
+                    <th className="text-left px-4 py-2 font-medium text-gray-600 text-xs uppercase tracking-wider">Subgroup</th>
+                    <th className="text-left px-4 py-2 font-medium text-gray-600 text-xs uppercase tracking-wider">Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   {tickets.map((ticket) => (
-                    <tr key={ticket.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="px-4 py-3">
-                        <Link href={`/incidents/${ticket.id}`} className="text-blue-600 hover:underline font-mono text-xs">
+                    <tr key={ticket.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-2">
+                        <Link href={`/incidents/${ticket.id}`} className="font-mono text-xs font-medium hover:underline" style={{ color: "var(--primary)" }}>
                           {ticket.reference}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-gray-700 max-w-xs truncate">{ticket.summary}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-2 text-gray-700 max-w-xs truncate">{ticket.summary}</td>
+                      <td className="px-4 py-2">
                         {ticket.group_code && (
-                          <Link href={`/groups/${ticket.group_code}`} className="text-blue-600 hover:underline text-xs">
+                          <Link href={`/groups/${ticket.group_code}`} className="text-xs font-medium hover:underline" style={{ color: "var(--primary)" }}>
                             {ticket.group_name || ticket.group_code}
                           </Link>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-500">{ticket.subgroup_name || "—"}</td>
-                      <td className="px-4 py-3">
-                        <Badge variant={ticket.priority?.toLowerCase()}>{ticket.priority}</Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge>{ticket.severity}</Badge>
-                      </td>
-                      <td className="px-4 py-3 text-gray-400 text-xs">{ticket.created_at_ticket}</td>
+                      <td className="px-4 py-2 text-xs text-gray-500 truncate max-w-[180px]">{ticket.subgroup_name || "—"}</td>
+                      <td className="px-4 py-2 text-gray-400 text-xs whitespace-nowrap">{ticket.created_at_ticket}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -164,27 +139,31 @@ export default function IncidentsPage() {
             </div>
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2">
+          {/* Pagination */}
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-500">
+              Showing {((page - 1) * 15) + 1}–{Math.min(page * 15, total)} of {total}
+            </p>
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setPage(Math.max(1, page - 1))}
                 disabled={page === 1}
-                className="px-3 py-2 text-sm rounded-lg border border-gray-300 disabled:opacity-50 hover:bg-gray-50"
+                className="btn-secondary text-xs disabled:opacity-50"
               >
                 Previous
               </button>
               <span className="text-sm text-gray-500">
-                Page {page} of {totalPages}
+                {page} / {totalPages}
               </span>
               <button
                 onClick={() => setPage(Math.min(totalPages, page + 1))}
                 disabled={page === totalPages}
-                className="px-3 py-2 text-sm rounded-lg border border-gray-300 disabled:opacity-50 hover:bg-gray-50"
+                className="btn-secondary text-xs disabled:opacity-50"
               >
                 Next
               </button>
             </div>
-          )}
+          </div>
         </>
       )}
     </div>
