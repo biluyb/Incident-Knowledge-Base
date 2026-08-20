@@ -8,35 +8,60 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const cleanId = id?.trim();
+
+  if (!cleanId) {
+    return NextResponse.json({ error: 'Incident ID is required' }, { status: 400 });
+  }
+
   try {
-    // Try by reference first, then by ID
+    // Try by reference first (exact match, case-insensitive, trimmed)
     let ticket = await queryOne(`
-      SELECT t.*, g.code as group_code, g.name as group_name,
-             s.name as subgroup_name, s.code as subgroup_code
+      SELECT t.*, g.code as group_code, g.name as group_name, g.description as group_description,
+             s.name as subgroup_name, s.code as subgroup_code, s.description as subgroup_description
       FROM tickets t
       LEFT JOIN groups g ON t.group_id = g.id
       LEFT JOIN subtypes s ON t.subgroup_id = s.id
-      WHERE UPPER(t.reference) = UPPER($1)
-    `, [id]);
+      WHERE TRIM(UPPER(t.reference)) = TRIM(UPPER($1))
+    `, [cleanId]);
 
+    // Try by numeric ID
+    if (!ticket) {
+      const numericId = parseInt(cleanId);
+      if (!isNaN(numericId)) {
+        ticket = await queryOne(`
+          SELECT t.*, g.code as group_code, g.name as group_name, g.description as group_description,
+                 s.name as subgroup_name, s.code as subgroup_code, s.description as subgroup_description
+          FROM tickets t
+          LEFT JOIN groups g ON t.group_id = g.id
+          LEFT JOIN subtypes s ON t.subgroup_id = s.id
+          WHERE t.id = $1
+        `, [numericId]);
+      }
+    }
+
+    // Try partial reference match (e.g., "3183311" matches "TSR-3183311")
     if (!ticket) {
       ticket = await queryOne(`
-        SELECT t.*, g.code as group_code, g.name as group_name,
-               s.name as subgroup_name, s.code as subgroup_code
+        SELECT t.*, g.code as group_code, g.name as group_name, g.description as group_description,
+               s.name as subgroup_name, s.code as subgroup_code, s.description as subgroup_description
         FROM tickets t
         LEFT JOIN groups g ON t.group_id = g.id
         LEFT JOIN subtypes s ON t.subgroup_id = s.id
-        WHERE t.id = $1
-      `, [parseInt(id) || 0]);
+        WHERE t.reference ILIKE '%' || $1 || '%'
+        ORDER BY t.id
+        LIMIT 1
+      `, [cleanId]);
     }
 
     if (!ticket) {
       return NextResponse.json({ error: 'Incident not found' }, { status: 404 });
     }
 
-    // Get related knowledge articles (SRS §24)
+    // Get related knowledge articles
     const relatedArticles = await query(`
-      SELECT ka.id, ka.title, ka.status, ka.symptoms, s.code as subtype_code,
+      SELECT ka.id, ka.title, ka.status, ka.symptoms, ka.root_cause, ka.immediate_fix,
+             s.code as subtype_code, s.name as subtype_name,
              g.code as group_code, g.name as group_name
       FROM knowledge_articles ka
       LEFT JOIN subtypes s ON ka.subtype_id = s.id
@@ -49,7 +74,7 @@ export async function GET(
       LIMIT 10
     `, [ticket.group_id]);
 
-    // Get similar incidents (SRS §23)
+    // Get similar incidents
     const similarIncidents = await query(`
       SELECT t.id, t.reference, t.summary, t.priority, t.severity,
              g.code as group_code, g.name as group_name,
@@ -58,7 +83,7 @@ export async function GET(
                WHEN t.id = $2 THEN 0
                ELSE GREATEST(
                  CASE WHEN t.group_id = $3 AND $3 IS NOT NULL THEN 0.3 ELSE 0 END,
-                 CASE WHEN LOWER(t.root_cause_category) = LOWER(COALESCE((SELECT root_cause_category FROM tickets WHERE id = $2), ''))
+                 CASE WHEN LOWER(COALESCE(t.root_cause_category, '')) = LOWER(COALESCE((SELECT root_cause_category FROM tickets WHERE id = $2), ''))
                       AND t.root_cause_category IS NOT NULL THEN 0.3 ELSE 0 END,
                  similarity(LOWER(COALESCE(t.summary, '')),
                             LOWER(COALESCE((SELECT summary FROM tickets WHERE id = $2), '')))
@@ -70,13 +95,13 @@ export async function GET(
       WHERE t.id != $2
         AND (
           t.group_id = $3
-          OR LOWER(t.root_cause_category) = LOWER(COALESCE((SELECT root_cause_category FROM tickets WHERE id = $2), ''))
+          OR LOWER(COALESCE(t.root_cause_category, '')) = LOWER(COALESCE((SELECT root_cause_category FROM tickets WHERE id = $2), ''))
           OR similarity(LOWER(COALESCE(t.summary, '')),
                         LOWER(COALESCE((SELECT summary FROM tickets WHERE id = $2), ''))) > 0.1
         )
       HAVING GREATEST(
         CASE WHEN t.group_id = $3 AND $3 IS NOT NULL THEN 0.3 ELSE 0 END,
-        CASE WHEN LOWER(t.root_cause_category) = LOWER(COALESCE((SELECT root_cause_category FROM tickets WHERE id = $2), ''))
+        CASE WHEN LOWER(COALESCE(t.root_cause_category, '')) = LOWER(COALESCE((SELECT root_cause_category FROM tickets WHERE id = $2), ''))
              AND t.root_cause_category IS NOT NULL THEN 0.3 ELSE 0 END,
         similarity(LOWER(COALESCE(t.summary, '')),
                    LOWER(COALESCE((SELECT summary FROM tickets WHERE id = $2), '')))
@@ -85,13 +110,27 @@ export async function GET(
       LIMIT 5
     `, [ticket.id, ticket.id, ticket.group_id]);
 
+    // Get subgroup-related incidents (for context when description is sparse)
+    let subgroupIncidents: any[] = [];
+    if (ticket.subgroup_id) {
+      subgroupIncidents = await query(`
+        SELECT t.id, t.reference, t.summary
+        FROM tickets t
+        WHERE t.subgroup_id = $1 AND t.id != $2
+        ORDER BY t.created_at_ticket DESC NULLS LAST
+        LIMIT 5
+      `, [ticket.subgroup_id, ticket.id]);
+    }
+
     return NextResponse.json({
       ...ticket,
       related_articles: relatedArticles,
       similar_incidents: similarIncidents,
+      subgroup_incidents: subgroupIncidents,
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Incident lookup error:', error);
+    return NextResponse.json({ error: 'Unable to load incident. Please try again.' }, { status: 500 });
   }
 }
 
@@ -100,6 +139,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const cleanId = id?.trim();
+
   try {
     const body = await request.json();
     const {
@@ -107,9 +148,24 @@ export async function PUT(
       root_cause_category, requester, dynamic_fields,
     } = body;
 
-    // Check incident exists
-    const existing = await queryOne('SELECT id FROM tickets WHERE id = $1', [parseInt(id) || 0]);
-    if (!existing) {
+    // Find the ticket by reference or ID
+    let ticketId: number | null = null;
+
+    const byRef = await queryOne(
+      'SELECT id FROM tickets WHERE TRIM(UPPER(reference)) = TRIM(UPPER($1))',
+      [cleanId]
+    );
+    if (byRef) {
+      ticketId = byRef.id;
+    } else {
+      const numericId = parseInt(cleanId);
+      if (!isNaN(numericId)) {
+        const byId = await queryOne('SELECT id FROM tickets WHERE id = $1', [numericId]);
+        if (byId) ticketId = byId.id;
+      }
+    }
+
+    if (!ticketId) {
       return NextResponse.json({ error: 'Incident not found' }, { status: 404 });
     }
 
@@ -117,7 +173,7 @@ export async function PUT(
     if (reference) {
       const dup = await queryOne(
         'SELECT id FROM tickets WHERE UPPER(reference) = UPPER($1) AND id != $2',
-        [reference, parseInt(id) || 0]
+        [reference, ticketId]
       );
       if (dup) {
         return NextResponse.json({ error: `Reference ${reference} already exists` }, { status: 409 });
@@ -143,11 +199,12 @@ export async function PUT(
       priority || null, severity || null,
       root_cause_category || null, requester || null,
       dynamic_fields ? JSON.stringify(dynamic_fields) : null,
-      parseInt(id) || 0,
+      ticketId,
     ]);
 
     return NextResponse.json({ message: 'Incident updated' });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Incident update error:', error);
+    return NextResponse.json({ error: 'Failed to update incident' }, { status: 500 });
   }
 }

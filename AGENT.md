@@ -188,6 +188,12 @@ Each group displays relevant fields on the incident creation/edit form:
 
 ## 10. Completed Features
 
+- [x] Admin Group & Subgroup Management — CRUD via /admin page, modals for create/edit
+- [x] Incident file uploads — upload, view, download, delete via FileUpload component
+- [x] Font readability — sharper text rendering, better contrast, stronger font weights
+- [x] Incident lookup fix — robust reference matching (trim, partial, numeric), fallback context display
+- [x] Empty-description incidents — show group/subgroup context knowledge
+
 - [x] Excel import — all 4 sheets (Group_Summary, All_Tickets_Grouped, Quick_Lookup, Sub_Types)
 - [x] PostgreSQL schema with full-text search + trigram indexes
 - [x] Multi-strategy search engine (exact ticket ref, quick lookup, full-text, trigram)
@@ -228,6 +234,18 @@ Each group displays relevant fields on the incident creation/edit form:
 8-group taxonomy with 30 subgroups, all 237 incidents reclassified, edit/sort/filter working.
 
 ## 12. Recent Changes
+
+### 2026-08-20 — Admin, File Upload, Incident Fix, Typography
+
+Implemented:
+- Admin page (/admin): manage groups and subgroups with CRUD modals
+- Admin API routes: POST/PUT/DELETE for groups and subgroups
+- File upload system: incident_files table, upload API, download API, FileUpload component
+- Incident lookup fix: robust reference matching (trim, partial, numeric), fallback context
+- Empty-description incidents: show group/subgroup context knowledge
+- Font readability: sharper text rendering, -webkit-font-smoothing, stronger headings
+- Navigation: added Admin link with settings icon
+- New database table: incident_files (ticket_id, original_name, stored_name, file_size, mime_type)
 
 ### 2026-08-20 — UI/UX Overhaul
 
@@ -302,6 +320,14 @@ Implemented:
 ## 13. Known Issues
 
 1. **No authentication** — users table is empty, no login system
+2. **No full custom field system** — per instruction §13, should support admin-created fields without code changes
+3. **No audit trail** — audit_log table exists but not populated
+4. **Knowledge articles only for G02 and G03** — Other domains (G01, G04-G08) need content
+5. **No archiving/restore** — instruction §17 requires soft-delete capability
+6. **Excel re-import** — keywords table was cleared during migration, needs re-import from Excel v4
+7. **No Excel export** — only import exists
+
+1. **No authentication** — users table is empty, no login system
 2. **No admin interface** — groups, subtypes cannot be managed via UI (§5, §6 need + New Group / + New Subgroup buttons)
 3. **No file upload** — §4 requires attachment support
 4. **No full custom field system** — per instruction §13, should support admin-created fields without code changes
@@ -337,14 +363,12 @@ Implemented:
 ## 16. Next Tasks (Priority Order)
 
 1. **Re-import keywords** — keywords table was cleared during migration
-2. **File upload support** — §4: attach screenshots, logs, PDFs to incidents
-3. **Admin interface** — manage groups (§5), subgroups (§6), users, import/export
-4. **Full custom field system** — admin-create fields per group without code changes (§13)
-5. **Authentication** — login system with Viewer/Editor/Admin roles (§20)
-6. **Archiving** — soft-delete with restore capability (§17)
-7. **Knowledge articles for remaining domains** — G01, G04-G08 need content
-8. **Audit trail** — track changes (§21)
-9. **Excel export** — export incidents and knowledge articles
+2. **Full custom field system** — admin-create fields per group without code changes (§13)
+3. **Authentication** — login system with Viewer/Editor/Admin roles (§20)
+4. **Archiving** — soft-delete with restore capability (§17)
+5. **Knowledge articles for remaining domains** — G01, G04-G08 need content
+6. **Audit trail** — track changes (§21)
+7. **Excel export** — export incidents and knowledge articles
 
 ## 17. Development Rules
 

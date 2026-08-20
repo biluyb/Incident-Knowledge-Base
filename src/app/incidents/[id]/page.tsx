@@ -1,22 +1,39 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { FileUpload } from "@/components/ui/FileUpload";
 
 export default function IncidentDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const [ticket, setTicket] = useState<any>(null);
+  const [files, setFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!id) return;
-    fetch(`/api/incidents/${id}`)
-      .then((r) => r.json())
-      .then(setTicket)
-      .catch(console.error)
+    setLoading(true);
+    setError("");
+    Promise.all([
+      fetch(`/api/incidents/${id}`).then((r) => r.json()),
+      fetch(`/api/files?ticket_id=${id}`).then((r) => r.json()),
+    ])
+      .then(([ticketData, filesData]) => {
+        if (ticketData.error) throw new Error(ticketData.error);
+        setTicket(ticketData);
+        setFiles(Array.isArray(filesData) ? filesData : []);
+      })
+      .catch(() => setError("Unable to load incident. It may not exist or there was a connection error."))
       .finally(() => setLoading(false));
+  }, [id]);
+
+  const loadFiles = useCallback(() => {
+    fetch(`/api/files?ticket_id=${id}`).then((r) => r.json()).then((data) => {
+      setFiles(Array.isArray(data) ? data : []);
+    }).catch(console.error);
   }, [id]);
 
   if (loading) {
@@ -30,11 +47,12 @@ export default function IncidentDetailPage() {
     );
   }
 
-  if (!ticket || ticket.error) {
+  if (error || !ticket || ticket.error) {
     return (
       <div className="text-center py-16">
-        <p className="text-lg text-gray-600">Incident not found</p>
-        <Link href="/incidents" className="text-sm mt-2 inline-block hover:underline" style={{ color: "var(--primary)" }}>
+        <p className="text-lg text-gray-700 font-medium">Incident not found</p>
+        <p className="text-sm text-gray-500 mt-1">{error || "The requested incident could not be found."}</p>
+        <Link href="/incidents" className="text-sm mt-3 inline-block hover:underline" style={{ color: "var(--primary)" }}>
           ← Back to Incidents
         </Link>
       </div>
@@ -49,6 +67,8 @@ export default function IncidentDetailPage() {
     { label: "Permanently Closed", value: ticket.permanently_closed_at },
     { label: "Root Cause Category", value: ticket.root_cause_category },
   ];
+
+  const hasSummary = ticket.summary && ticket.summary.trim().length > 0;
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -71,7 +91,7 @@ export default function IncidentDetailPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 font-mono">{ticket.reference}</h1>
-          <p className="text-gray-600 mt-1">{ticket.summary}</p>
+          {hasSummary && <p className="text-gray-600 mt-1">{ticket.summary}</p>}
         </div>
         <Link href={`/incidents/${ticket.id}/edit`} className="btn-secondary text-xs flex-shrink-0">
           Edit
@@ -105,6 +125,23 @@ export default function IncidentDetailPage() {
         )}
       </div>
 
+      {/* Group/Subgroup Context — show when description is sparse */}
+      {!hasSummary && ticket.group_name && (
+        <div className="bg-gray-50 rounded-lg border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-600 mb-2">Classification Context</h2>
+          <p className="text-sm text-gray-600">
+            This incident belongs to <strong>{ticket.group_name}</strong>
+            {ticket.subgroup_name && <span> → {ticket.subgroup_name}</span>}.
+          </p>
+          {ticket.group_description && (
+            <p className="text-sm text-gray-500 mt-2">{ticket.group_description}</p>
+          )}
+          {ticket.subgroup_description && (
+            <p className="text-sm text-gray-500 mt-1">{ticket.subgroup_description}</p>
+          )}
+        </div>
+      )}
+
       {/* Historical Metadata */}
       <div className="bg-white rounded-lg border border-gray-200 p-5">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
@@ -114,7 +151,7 @@ export default function IncidentDetailPage() {
           {metaFields.filter(f => f.value).map((f) => (
             <div key={f.label}>
               <p className="text-xs text-gray-400 mb-0.5">{f.label}</p>
-              <p className="text-sm text-gray-800">{String(f.value)}</p>
+              <p className="text-sm text-gray-800 font-medium">{String(f.value)}</p>
             </div>
           ))}
         </div>
@@ -216,6 +253,35 @@ export default function IncidentDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Subgroup-related incidents — context when description is sparse */}
+      {!hasSummary && ticket.subgroup_incidents && ticket.subgroup_incidents.length > 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            Other Incidents in This Subgroup
+          </h2>
+          <div className="space-y-2">
+            {ticket.subgroup_incidents.map((si: any) => (
+              <Link
+                key={si.id}
+                href={`/incidents/${si.id}`}
+                className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100"
+              >
+                <span className="text-sm font-mono font-medium text-gray-900">{si.reference}</span>
+                <span className="text-sm text-gray-600 truncate flex-1">{si.summary}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* File Uploads */}
+      <div className="bg-white rounded-lg border border-gray-200 p-5">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+          Attached Files
+        </h2>
+        <FileUpload ticketId={ticket.id} files={files} onFilesChanged={loadFiles} />
+      </div>
     </div>
   );
 }

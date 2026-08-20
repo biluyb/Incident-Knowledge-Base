@@ -236,3 +236,18 @@ DROP TRIGGER IF EXISTS articles_search_vector_update ON knowledge_articles;
 CREATE TRIGGER articles_search_vector_update
   BEFORE INSERT OR UPDATE ON knowledge_articles
   FOR EACH ROW EXECUTE FUNCTION update_article_search_vector();
+
+-- ============================================================
+-- Incident Files — file attachments for incidents
+-- ============================================================
+CREATE TABLE IF NOT EXISTS incident_files (
+  id SERIAL PRIMARY KEY,
+  ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+  original_name VARCHAR(500) NOT NULL,
+  stored_name VARCHAR(200) NOT NULL,
+  file_size BIGINT NOT NULL,
+  mime_type VARCHAR(100) DEFAULT 'application/octet-stream',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_incident_files_ticket ON incident_files(ticket_id);
