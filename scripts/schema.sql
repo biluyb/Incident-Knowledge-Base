@@ -10,9 +10,10 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ============================================================
 CREATE TABLE IF NOT EXISTS groups (
     id SERIAL PRIMARY KEY,
-    code VARCHAR(10) UNIQUE NOT NULL,          -- A, B, C, D, E, F, G, H, I, J
+    code VARCHAR(50) UNIQUE NOT NULL,          -- COB-BATCH, ACCT-LIFECYCLE, etc.
     name VARCHAR(500) NOT NULL,
     description TEXT,
+    legacy_code VARCHAR(50),                   -- Original A-J code from Excel
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -51,6 +52,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     priority VARCHAR(50),
     severity VARCHAR(50),
     group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL,
+    custom_fields JSONB DEFAULT '{}',
     -- Full text search vector
     search_vector TSVECTOR,
     created_at TIMESTAMP DEFAULT NOW(),

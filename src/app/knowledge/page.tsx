@@ -6,8 +6,16 @@ import { Badge } from "@/components/ui/Badge";
 
 export default function KnowledgePage() {
   const [articles, setArticles] = useState<any[]>([]);
+  const [groups, setGroups] = useState<{code: string; name: string}[]>([]);
   const [loading, setLoading] = useState(true);
   const [groupFilter, setGroupFilter] = useState("");
+
+  useEffect(() => {
+    fetch("/api/groups")
+      .then((r) => r.json())
+      .then(setGroups)
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -43,8 +51,8 @@ export default function KnowledgePage() {
           className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none"
         >
           <option value="">All Groups</option>
-          {["A","B","C","D","E","F","G","H","I","J"].map((g) => (
-            <option key={g} value={g}>Group {g}</option>
+          {groups.map((g) => (
+            <option key={g.code} value={g.code}>{g.name}</option>
           ))}
         </select>
       </div>
@@ -74,7 +82,7 @@ export default function KnowledgePage() {
                 )}
                 <Badge>{article.status}</Badge>
                 {article.group_code && (
-                  <span className="text-xs text-gray-400">Group {article.group_code}</span>
+                  <span className="text-xs text-gray-400">{article.group_name || article.group_code}</span>
                 )}
               </div>
               <h3 className="font-semibold text-gray-900 text-sm">{article.title}</h3>

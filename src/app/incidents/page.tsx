@@ -4,14 +4,27 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 
-export default function TicketsPage() {
+interface Group {
+  code: string;
+  name: string;
+}
+
+export default function IncidentsPage() {
   const [tickets, setTickets] = useState<any[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [group, setGroup] = useState("");
   const [priority, setPriority] = useState("");
+
+  useEffect(() => {
+    fetch("/api/groups")
+      .then((r) => r.json())
+      .then(setGroups)
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -32,9 +45,17 @@ export default function TicketsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Incidents</h1>
-        <p className="text-sm text-gray-500 mt-1">{total} historical incidents</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Incidents</h1>
+          <p className="text-sm text-gray-500 mt-1">{total} historical incidents</p>
+        </div>
+        <Link
+          href="/incidents/new"
+          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+        >
+          + Add Incident
+        </Link>
       </div>
 
       {/* Filters */}
@@ -45,8 +66,8 @@ export default function TicketsPage() {
           className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none"
         >
           <option value="">All Groups</option>
-          {["A","B","C","D","E","F","G","H","I","J"].map((g) => (
-            <option key={g} value={g}>Group {g}</option>
+          {groups.map((g) => (
+            <option key={g.code} value={g.code}>{g.name}</option>
           ))}
         </select>
         <select
@@ -70,8 +91,8 @@ export default function TicketsPage() {
         </div>
       ) : tickets.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-          <div className="text-4xl mb-4">🎫</div>
-          <p className="text-lg text-gray-600">No tickets found</p>
+          <div className="text-4xl mb-4">📋</div>
+          <p className="text-lg text-gray-600">No incidents found</p>
         </div>
       ) : (
         <>
@@ -93,7 +114,7 @@ export default function TicketsPage() {
                   {tickets.map((ticket) => (
                     <tr key={ticket.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="px-4 py-3">
-                        <Link href={`/tickets/${ticket.id}`} className="text-blue-600 hover:underline font-mono text-xs">
+                        <Link href={`/incidents/${ticket.id}`} className="text-blue-600 hover:underline font-mono text-xs">
                           {ticket.reference}
                         </Link>
                       </td>
@@ -101,7 +122,7 @@ export default function TicketsPage() {
                       <td className="px-4 py-3">
                         {ticket.group_code && (
                           <Link href={`/groups/${ticket.group_code}`} className="text-blue-600 hover:underline text-xs">
-                            {ticket.group_code}
+                            {ticket.group_name || ticket.group_code}
                           </Link>
                         )}
                       </td>

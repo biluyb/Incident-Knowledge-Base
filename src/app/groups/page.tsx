@@ -49,19 +49,16 @@ export default function GroupsPage() {
               className="bg-white rounded-xl border border-gray-200 p-6 hover:border-blue-300 hover:shadow-md transition-all group"
             >
               <div className="flex items-start justify-between mb-3">
-                <span className="inline-flex items-center justify-center w-10 h-10 bg-blue-100 text-blue-700 font-bold text-lg rounded-lg">
-                  {g.code}
-                </span>
-                <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-full">
-                  {g.ticket_count} tickets
+                <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors text-sm leading-tight flex-1">
+                  {g.name}
+                </h3>
+                <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-full ml-2 whitespace-nowrap">
+                  {g.ticket_count} incidents
                 </span>
               </div>
-              <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors text-sm leading-tight">
-                {g.name}
-              </h3>
               <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
-                <span>📝 {g.article_count} articles</span>
-                <span>📂 {g.subtype_count} sub-types</span>
+                {g.article_count > 0 && <span>📝 {g.article_count} articles</span>}
+                {g.subtype_count > 0 && <span>📂 {g.subtype_count} sub-types</span>}
               </div>
             </Link>
           ))}

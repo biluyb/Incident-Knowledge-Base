@@ -38,11 +38,13 @@ export interface Ticket {
   priority: string | null;
   severity: string | null;
   group_id: number | null;
+  custom_fields?: Record<string, string>;
   created_at: Date;
   updated_at: Date;
   // Joined fields
   group?: Group;
   related_articles?: KnowledgeArticle[];
+  similar_incidents?: Ticket[];
 }
 
 export interface KnowledgeArticle {

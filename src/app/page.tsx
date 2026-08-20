@@ -57,28 +57,32 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Browse Groups — per SRS §17 */}
+      {/* Browse Knowledge Domains — per instruction §19 */}
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Browse Groups</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Browse Knowledge Domains</h2>
         {groups.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {groups.map((g) => (
               <Link
                 key={g.code}
                 href={`/groups/${g.code}`}
-                className="bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 hover:shadow-md transition-all text-center group"
+                className="bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 hover:shadow-md transition-all group"
               >
-                <span className="inline-flex items-center justify-center w-10 h-10 bg-blue-100 text-blue-700 font-bold text-lg rounded-lg group-hover:bg-blue-200 transition-colors">
-                  {g.code}
-                </span>
-                <p className="text-xs text-gray-600 mt-2 leading-tight line-clamp-2">
+                <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors text-sm">
                   {g.name}
-                </p>
-                <p className="text-[10px] text-gray-400 mt-1">
+                </h3>
+                <p className="text-xs text-gray-400 mt-1">
                   {g.ticket_count} incident{g.ticket_count !== 1 ? "s" : ""}
                 </p>
               </Link>
             ))}
+            <Link
+              href="/incidents/new"
+              className="bg-white rounded-xl border-2 border-dashed border-gray-300 p-4 hover:border-blue-400 hover:bg-blue-50 transition-all flex items-center justify-center gap-2 text-blue-600"
+            >
+              <span className="text-lg">+</span>
+              <span className="text-sm font-medium">Add Incident</span>
+            </Link>
           </div>
         ) : (
           <div className="text-center py-8 bg-white rounded-xl border border-gray-200">

@@ -138,33 +138,33 @@ Group (A-J, 10 groups)
 
 ## 8. Classification System
 
-### Current: Legacy Excel Groups (A-J)
+### Current: Descriptive Technical Domains
 
-| Code | Name | Tickets |
-|---|---|---|
-| A | COB Crashes & Hangs in AA.CREATE.NAU.ACTIVITIES | 10 |
-| B | COB Crashes in AA.SERVICE.PROCESS & Specialized EOD Modules | 15 |
-| C | COB Performance Degradation & Start-of-Day Issues | 8 |
-| D | Interest Catch-All Entries & New Product Account Issues | 15 |
-| E | Overdraft (OD) Account Lifecycle & Operations | 15 |
-| F | Interest Accrual, Capitalization & Loan Interest Lifecycle | 12 |
-| G | FX Revaluation, GL Differences & Payment Entry Issues | 12 |
-| H | Teller, Vault, Cheque & Transaction Management | 12 |
-| I | FCM Compliance Screening & AML Watch Lists | 12 |
-| J | System Administration, Platform Defects & Miscellaneous | 12 |
+| Code | Name | Legacy | Tickets | Articles | Keywords |
+|---|---|---|---|---|---|
+| COB-BATCH | COB & Batch Processing | A, B, C | 67 | 0 | 18 |
+| ACCT-LIFECYCLE | Account & Arrangement Lifecycle | E | 15 | 5 | 17 |
+| INTEREST-LOANS | Interest, Loans & Accrual | D, F | 35 | 4 | 18 |
+| PAYMENTS-FX | Payments, Transfers, FX & GL | G | 19 | 0 | 10 |
+| TELLER-BRANCH | Teller & Branch Operations | H | 26 | 0 | 8 |
+| COMPLIANCE | Compliance, FCM & AML | I | 9 | 0 | 5 |
+| SYS-ADMIN | System Admin & Platform | J | 66 | 0 | 11 |
 
-**IMPORTANT**: Per SRS §8, these legacy A-J groups should be reorganized into ~7-8 meaningful technical domains for the user-facing UI. The current code still uses A-J codes throughout.
+### Legacy Group Mapping
 
-### Suggested Future Groups (per SRS §8)
+Original Excel groups A-J are preserved as `legacy_code` column in the `groups` table.
+Legacy codes are stored as comma-separated values when multiple groups are merged.
 
-1. COB & Batch Processing
-2. Account, Arrangement & Lifecycle Management
-3. Interest, Loans & Accrual Processing
-4. Payments, Transfers, FX & GL
-5. Teller, Cash, Cheque & Branch Operations
-6. Compliance, FCM & AML
-7. Limits, Overdrafts & Transaction Restrictions
-8. System Administration, Configuration & Platform Issues
+### Group-Specific Dynamic Fields (instruction §12)
+
+Each group displays relevant fields on the incident creation form:
+- **COB-BATCH**: COB Process, Batch/Job, Service, T24 Routine, Error Message
+- **ACCT-LIFECYCLE**: Account Type, Product Code, Operation, Error/Block
+- **INTEREST-LOANS**: Interest Type, Product, Accounting Issue, T24 Record
+- **PAYMENTS-FX**: Payment Type, Transaction Type, Currency, GL Account, Posting Issue
+- **TELLER-BRANCH**: Teller/Vault, Transaction Type, Branch, Operation
+- **COMPLIANCE**: Screening Type, FCM Module, AML Rule, Screening Result
+- **SYS-ADMIN**: Platform Component, Configuration, Service, Issue Type
 
 ## 9. Completed Features
 
@@ -178,7 +178,7 @@ Group (A-J, 10 groups)
 - [x] Related tickets on knowledge article detail
 - [x] Knowledge article detail with Problem/Solution separation
 - [x] Add knowledge article form
-- [x] Groups browse page
+- [x] Groups browse page with descriptive names
 - [x] Group detail page with subtypes, tickets, articles, keywords
 - [x] Quick Lookup page (keyword → group mapping)
 - [x] Reference links imported from Sub_Types sheet
@@ -186,6 +186,11 @@ Group (A-J, 10 groups)
 - [x] Sidebar navigation
 - [x] Responsive design (mobile + desktop)
 - [x] Copy buttons for diagnostic commands
+- [x] Group reorganization — 10 legacy groups → 7 descriptive domains with legacy_code preservation
+- [x] Incident creation form (+ Add Incident) with dynamic group-specific fields
+- [x] Custom fields support (JSONB on tickets table)
+- [x] Dynamic group dropdowns — all filters use API-fetched groups
+- [x] Homepage Browse Knowledge Domains with + Add Incident button
 
 ## 10. Current Development Phase
 
@@ -195,6 +200,20 @@ Excel data imported, core search and browse working, knowledge articles with ric
 
 ## 11. Recent Changes
 
+### 2026-08-20 — Group Reorganization & Incident Creation
+
+Implemented:
+- Reorganized 10 legacy groups (A-J) into 7 descriptive technical domains
+- Added legacy_code column to preserve original A-J classifications
+- Created migration script (scripts/migrate-groups.ts) with verification
+- All 237 tickets, 87 keywords, 9 articles, 9 subtypes migrated
+- Added custom_fields JSONB column to tickets for dynamic group-specific data
+- Created incident creation form (/incidents/new) with dynamic group-specific fields
+- Updated all UI pages to fetch groups from API (no more hardcoded A-J)
+- Homepage: Browse Knowledge Domains grid + Add Incident button
+- Groups page: descriptive names instead of single letters
+- Search/Incidents/Knowledge pages: dynamic group dropdowns
+
 ### 2026-08-20 — SRS v2.0 Alignment
 
 Implemented:
@@ -203,11 +222,11 @@ Implemented:
 - Tickets → Incidents renamed throughout
 - Navigation: Home, Search, Incidents, Groups, Knowledge, Quick Lookup
 - Search engine rewritten: exact ticket match highest rank, quick lookup integration
-- Similar Incidents on incident detail (SRS §23)
-- Related Knowledge on incident detail (SRS §24)
-- Related Tickets on knowledge detail (SRS §25)
-- Knowledge article page: Problem/Solution structure (SRS §16)
-- Knowledge creation page at /knowledge/new (SRS §26-27)
+- Similar Incidents on incident detail
+- Related Knowledge on incident detail
+- Related Tickets on knowledge detail
+- Knowledge article page: Problem/Solution structure
+- Knowledge creation page at /knowledge/new
 
 ### 2026-08-20 — Excel Import
 
@@ -220,16 +239,14 @@ Implemented:
 
 ## 12. Known Issues
 
-1. **Legacy group codes (A-J) still used in UI** — Should be reorganized into descriptive technical domains per SRS §8
-2. **No authentication** — users table is empty, no login system
-3. **No admin interface** — groups, subtypes, users cannot be managed via UI
-4. **No Excel export** — only import exists
-5. **No incident creation from UI** — only knowledge articles can be added
-6. **No custom field system** — per SRS §13, should support dynamic fields
-7. **No audit trail** — audit_log table exists but not populated
-8. **Knowledge articles only from Sub_Types** — Groups A, B, C, F, G, H, I, J have placeholder subtypes
-9. **Groups page links use `/groups/[code]`** — code is single letter (A-J), not the SRS-suggested descriptive names
-10. **Build warning** — Next.js 16 Turbopack, some client components need Suspense boundaries
+1. **No authentication** — users table is empty, no login system
+2. **No admin interface** — groups, subtypes, users cannot be managed via UI
+3. **No Excel export** — only import exists
+4. **No full custom field system** — per instruction §13, should support admin-created fields without code changes
+5. **No audit trail** — audit_log table exists but not populated
+6. **Knowledge articles only for ACCT-LIFECYCLE and INTEREST-LOANS** — Other domains need content
+7. **Dynamic fields are stored but not displayed on incident detail** — Need to render custom_fields on detail page
+8. **No archiving/restore** — instruction §17 requires soft-delete capability
 
 ## 13. Important Design Decisions
 
@@ -255,15 +272,14 @@ Implemented:
 
 ## 15. Next Tasks (Priority Order)
 
-1. **Reorganize groups** into descriptive technical domains (SRS §8) — preserve A-J as legacy_group_code
-2. **Authentication** — login system with Viewer/Editor/Admin roles
-3. **Admin interface** — manage groups, subtypes, users
-4. **Incident creation form** — document newly solved incidents
-5. **Custom field system** — dynamic fields per group (SRS §13)
+1. **Display custom_fields on incident detail page** — render dynamic group-specific fields
+2. **Full custom field system** — admin-create fields per group without code changes (instruction §13)
+3. **Authentication** — login system with Viewer/Editor/Admin roles (instruction §20)
+4. **Admin interface** — manage groups, subtypes, users, import/export (instruction §18)
+5. **Archiving** — soft-delete with restore capability (instruction §17)
 6. **Excel export** — export incidents and knowledge articles
-7. **Archiving** — soft-delete with restore capability
-8. **Audit trail** — track changes
-9. **Knowledge articles for remaining groups** — Groups A, B, C, F, G, H, I, J need content
+7. **Audit trail** — track changes (instruction §21)
+8. **Knowledge articles for remaining domains** — COB-BATCH, PAYMENTS-FX, TELLER-BRANCH, COMPLIANCE, SYS-ADMIN need content
 
 ## 16. Development Rules
 

@@ -16,8 +16,16 @@ function SearchContent() {
   const severityFilter = searchParams.get("severity") || "";
 
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [groups, setGroups] = useState<{code: string; name: string}[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/groups")
+      .then((r) => r.json())
+      .then(setGroups)
+      .catch(console.error);
+  }, []);
 
   const doSearch = useCallback(async () => {
     if (!q.trim()) return;
@@ -67,8 +75,8 @@ function SearchContent() {
           className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none"
         >
           <option value="">All Groups</option>
-          {["A","B","C","D","E","F","G","H","I","J"].map((g) => (
-            <option key={g} value={g}>Group {g}</option>
+          {groups.map((g) => (
+            <option key={g.code} value={g.code}>{g.name}</option>
           ))}
         </select>
 
@@ -126,7 +134,7 @@ function SearchContent() {
                         {r.type === "knowledge" ? "Knowledge Article" : "Ticket"}
                       </Badge>
                       {r.group_code && (
-                        <span className="text-xs text-gray-500">Group {r.group_code}</span>
+                        <span className="text-xs text-gray-500">{r.group_name || r.group_code}</span>
                       )}
                       {r.subtype_code && (
                         <span className="text-xs text-gray-400">· {r.subtype_code}</span>

@@ -72,3 +72,53 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const {
+      reference, summary, group_id, priority, severity, status,
+      root_cause_category, requester, dynamic_fields,
+    } = body;
+
+    if (!reference || !summary || !group_id) {
+      return NextResponse.json(
+        { error: 'Reference, summary, and group are required' },
+        { status: 400 }
+      );
+    }
+
+    // Check for duplicate reference
+    const existing = await queryOne(
+      'SELECT id FROM tickets WHERE UPPER(reference) = UPPER($1)',
+      [reference]
+    );
+    if (existing) {
+      return NextResponse.json(
+        { error: `Incident ${reference} already exists` },
+        { status: 409 }
+      );
+    }
+
+    const result = await queryOne<{ id: number }>(`
+      INSERT INTO tickets
+        (reference, summary, group_id, priority, severity, status,
+         root_cause_category, requester, custom_fields)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING id
+    `, [
+      reference, summary, group_id,
+      priority || null, severity || null, status || 'Permanently Closed',
+      root_cause_category || null, requester || null,
+      JSON.stringify(dynamic_fields || {}),
+    ]);
+
+    if (!result) {
+      return NextResponse.json({ error: 'Failed to create incident' }, { status: 500 });
+    }
+
+    return NextResponse.json({ id: result.id, message: 'Incident created' }, { status: 201 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
