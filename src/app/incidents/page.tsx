@@ -19,7 +19,7 @@ export default function TicketsPage() {
     if (group) params.set("group", group);
     if (priority) params.set("priority", priority);
 
-    fetch(`/api/tickets?${params}`)
+    fetch(`/api/incidents?${params}`)
       .then((r) => r.json())
       .then((data) => {
         setTickets(data.tickets || []);
