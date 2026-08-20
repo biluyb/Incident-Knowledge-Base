@@ -38,11 +38,20 @@ export interface Ticket {
   priority: string | null;
   severity: string | null;
   group_id: number | null;
+  subgroup_id: number | null;
+  classification_confidence: string | null;
+  classification_note: string | null;
+  legacy_group: string | null;
   custom_fields?: Record<string, string>;
   created_at: Date;
   updated_at: Date;
   // Joined fields
   group?: Group;
+  subgroup?: Subtype;
+  group_code?: string;
+  group_name?: string;
+  subgroup_name?: string;
+  subgroup_code?: string;
   related_articles?: KnowledgeArticle[];
   similar_incidents?: Ticket[];
 }

@@ -56,23 +56,54 @@ export default function IncidentDetailPage() {
 
   return (
     <div className="max-w-4xl space-y-8">
-      {/* Header — SRS §15 */}
+      {/* Header */}
       <div>
-        <Link href="/incidents" className="text-sm text-blue-600 hover:underline mb-2 inline-block">
-          ← All Incidents
-        </Link>
+        <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+          <Link href="/incidents" className="text-blue-600 hover:underline">← All Incidents</Link>
+          {ticket.group_code && (
+            <>
+              <span>·</span>
+              <Link href={`/groups/${ticket.group_code}`} className="text-blue-600 hover:underline">
+                {ticket.group_name || ticket.group_code}
+              </Link>
+            </>
+          )}
+        </div>
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-2xl font-bold text-gray-900 font-mono">{ticket.reference}</h1>
-          {ticket.group_code && (
-            <Link href={`/groups/${ticket.group_code}`}>
-              <Badge>Group {ticket.group_code}</Badge>
-            </Link>
-          )}
+          <Link
+            href={`/incidents/${ticket.id}/edit`}
+            className="px-3 py-1 text-xs bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            ✏️ Edit
+          </Link>
         </div>
         <p className="text-gray-600 mt-2">{ticket.summary}</p>
       </div>
 
-      {/* Historical Ticket Metadata — SRS §15 */}
+      {/* Classification Info */}
+      <div className="flex flex-wrap gap-3 text-sm">
+        {ticket.group_code && (
+          <Link href={`/groups/${ticket.group_code}`} className="inline-flex items-center gap-1.5">
+            <Badge>Group: {ticket.group_name || ticket.group_code}</Badge>
+          </Link>
+        )}
+        {ticket.subgroup_name && (
+          <Badge variant="published">{ticket.subgroup_name}</Badge>
+        )}
+        {ticket.classification_confidence && (
+          <span className="text-xs text-gray-400 self-center">
+            Confidence: {ticket.classification_confidence}
+          </span>
+        )}
+        {ticket.legacy_group && (
+          <span className="text-xs text-gray-400 self-center">
+            Legacy: {ticket.legacy_group}
+          </span>
+        )}
+      </div>
+
+      {/* Historical Metadata — §15 */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
           Historical Incident Information
@@ -96,14 +127,31 @@ export default function IncidentDetailPage() {
               href={`/groups/${ticket.group_code}`}
               className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline"
             >
-              <span className="font-bold">Group {ticket.group_code}</span>
-              {ticket.group_name && <span className="text-gray-500">— {ticket.group_name}</span>}
+              <span className="font-bold">{ticket.group_name || ticket.group_code}</span>
+              {ticket.subgroup_name && (
+                <span className="text-gray-500">→ {ticket.subgroup_name}</span>
+              )}
             </Link>
+          </div>
+        )}
+        {ticket.custom_fields && Object.keys(ticket.custom_fields).length > 0 && (
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <p className="text-xs text-gray-400 mb-2">Custom Fields</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {Object.entries(ticket.custom_fields).map(([key, value]) => (
+                value ? (
+                  <div key={key}>
+                    <p className="text-xs text-gray-400 capitalize">{key.replace(/_/g, ' ')}</p>
+                    <p className="text-sm text-gray-800">{String(value)}</p>
+                  </div>
+                ) : null
+              ))}
+            </div>
           </div>
         )}
       </div>
 
-      {/* Related Knowledge Articles — SRS §24 */}
+      {/* Related Knowledge Articles — §24 */}
       {ticket.related_articles && ticket.related_articles.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
@@ -132,7 +180,7 @@ export default function IncidentDetailPage() {
         </div>
       )}
 
-      {/* Similar Historical Incidents — SRS §23 */}
+      {/* Similar Historical Incidents — §23 */}
       {ticket.similar_incidents && ticket.similar_incidents.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">

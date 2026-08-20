@@ -18,6 +18,8 @@ export default function IncidentsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [group, setGroup] = useState("");
   const [priority, setPriority] = useState("");
+  const [sortField, setSortField] = useState("created_at_ticket");
+  const [sortOrder, setSortOrder] = useState("DESC");
 
   useEffect(() => {
     fetch("/api/groups")
@@ -28,7 +30,12 @@ export default function IncidentsPage() {
 
   useEffect(() => {
     setLoading(true);
-    const params = new URLSearchParams({ page: String(page), limit: "50" });
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: "50",
+      sort: sortField,
+      order: sortOrder,
+    });
     if (group) params.set("group", group);
     if (priority) params.set("priority", priority);
 
@@ -41,7 +48,7 @@ export default function IncidentsPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [page, group, priority]);
+  }, [page, group, priority, sortField, sortOrder]);
 
   return (
     <div className="space-y-6">
@@ -58,7 +65,7 @@ export default function IncidentsPage() {
         </Link>
       </div>
 
-      {/* Filters */}
+      {/* Filters + Sort */}
       <div className="flex flex-wrap gap-3">
         <select
           value={group}
@@ -81,6 +88,22 @@ export default function IncidentsPage() {
           <option value="medium">Medium</option>
           <option value="low">Low</option>
         </select>
+        <select
+          value={sortField}
+          onChange={(e) => { setSortField(e.target.value); setPage(1); }}
+          className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+        >
+          <option value="created_at_ticket">Date Created</option>
+          <option value="reference">Reference</option>
+          <option value="priority">Priority</option>
+          <option value="severity">Severity</option>
+        </select>
+        <button
+          onClick={() => { setSortOrder(sortOrder === "DESC" ? "ASC" : "DESC"); setPage(1); }}
+          className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+        >
+          {sortOrder === "DESC" ? "↓ Newest" : "↑ Oldest"}
+        </button>
       </div>
 
       {loading ? (
@@ -104,9 +127,9 @@ export default function IncidentsPage() {
                     <th className="text-left px-4 py-3 font-medium text-gray-600">Reference</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-600">Summary</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-600">Group</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">Subgroup</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-600">Priority</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-600">Severity</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-600">Created</th>
                   </tr>
                 </thead>
@@ -126,13 +149,13 @@ export default function IncidentsPage() {
                           </Link>
                         )}
                       </td>
+                      <td className="px-4 py-3 text-xs text-gray-500">{ticket.subgroup_name || "—"}</td>
                       <td className="px-4 py-3">
                         <Badge variant={ticket.priority?.toLowerCase()}>{ticket.priority}</Badge>
                       </td>
                       <td className="px-4 py-3">
                         <Badge>{ticket.severity}</Badge>
                       </td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">{ticket.status}</td>
                       <td className="px-4 py-3 text-gray-400 text-xs">{ticket.created_at_ticket}</td>
                     </tr>
                   ))}
@@ -141,7 +164,6 @@ export default function IncidentsPage() {
             </div>
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-2">
               <button

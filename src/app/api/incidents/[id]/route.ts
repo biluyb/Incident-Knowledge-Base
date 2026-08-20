@@ -11,17 +11,21 @@ export async function GET(
   try {
     // Try by reference first, then by ID
     let ticket = await queryOne(`
-      SELECT t.*, g.code as group_code, g.name as group_name
+      SELECT t.*, g.code as group_code, g.name as group_name,
+             s.name as subgroup_name, s.code as subgroup_code
       FROM tickets t
       LEFT JOIN groups g ON t.group_id = g.id
+      LEFT JOIN subtypes s ON t.subgroup_id = s.id
       WHERE UPPER(t.reference) = UPPER($1)
     `, [id]);
 
     if (!ticket) {
       ticket = await queryOne(`
-        SELECT t.*, g.code as group_code, g.name as group_name
+        SELECT t.*, g.code as group_code, g.name as group_name,
+               s.name as subgroup_name, s.code as subgroup_code
         FROM tickets t
         LEFT JOIN groups g ON t.group_id = g.id
+        LEFT JOIN subtypes s ON t.subgroup_id = s.id
         WHERE t.id = $1
       `, [parseInt(id) || 0]);
     }
@@ -38,8 +42,7 @@ export async function GET(
       LEFT JOIN subtypes s ON ka.subtype_id = s.id
       LEFT JOIN groups g ON ka.group_id = g.id
       WHERE (ka.group_id = $1 OR ka.subtype_id IN (
-        SELECT s2.id FROM subtypes s2
-        WHERE s2.group_id = $1
+        SELECT s2.id FROM subtypes s2 WHERE s2.group_id = $1
       ))
       AND ka.status = 'published'
       ORDER BY ka.title
@@ -47,10 +50,10 @@ export async function GET(
     `, [ticket.group_id]);
 
     // Get similar incidents (SRS §23)
-    // Similarity based on: same group, same root cause category, trigram on summary
     const similarIncidents = await query(`
       SELECT t.id, t.reference, t.summary, t.priority, t.severity,
              g.code as group_code, g.name as group_name,
+             s.name as subgroup_name,
              CASE
                WHEN t.id = $2 THEN 0
                ELSE GREATEST(
@@ -63,6 +66,7 @@ export async function GET(
              END as similarity_score
       FROM tickets t
       LEFT JOIN groups g ON t.group_id = g.id
+      LEFT JOIN subtypes s ON t.subgroup_id = s.id
       WHERE t.id != $2
         AND (
           t.group_id = $3
@@ -86,6 +90,63 @@ export async function GET(
       related_articles: relatedArticles,
       similar_incidents: similarIncidents,
     });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  try {
+    const body = await request.json();
+    const {
+      reference, summary, group_id, subgroup_id, priority, severity,
+      root_cause_category, requester, dynamic_fields,
+    } = body;
+
+    // Check incident exists
+    const existing = await queryOne('SELECT id FROM tickets WHERE id = $1', [parseInt(id) || 0]);
+    if (!existing) {
+      return NextResponse.json({ error: 'Incident not found' }, { status: 404 });
+    }
+
+    // Check reference uniqueness if changed
+    if (reference) {
+      const dup = await queryOne(
+        'SELECT id FROM tickets WHERE UPPER(reference) = UPPER($1) AND id != $2',
+        [reference, parseInt(id) || 0]
+      );
+      if (dup) {
+        return NextResponse.json({ error: `Reference ${reference} already exists` }, { status: 409 });
+      }
+    }
+
+    await queryOne(`
+      UPDATE tickets SET
+        reference = COALESCE($1, reference),
+        summary = COALESCE($2, summary),
+        group_id = COALESCE($3, group_id),
+        subgroup_id = $4,
+        priority = COALESCE($5, priority),
+        severity = COALESCE($6, severity),
+        root_cause_category = COALESCE($7, root_cause_category),
+        requester = COALESCE($8, requester),
+        custom_fields = COALESCE($9, custom_fields),
+        updated_at = NOW()
+      WHERE id = $10
+    `, [
+      reference || null, summary || null, group_id || null,
+      subgroup_id !== undefined ? subgroup_id : null,
+      priority || null, severity || null,
+      root_cause_category || null, requester || null,
+      dynamic_fields ? JSON.stringify(dynamic_fields) : null,
+      parseInt(id) || 0,
+    ]);
+
+    return NextResponse.json({ message: 'Incident updated' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

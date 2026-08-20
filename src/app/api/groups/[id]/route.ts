@@ -11,7 +11,7 @@ export async function GET(
   try {
     // Get group
     const group = await queryOne(`
-      SELECT * FROM groups WHERE id = $1 OR UPPER(code) = UPPER($1)
+      SELECT * FROM groups WHERE UPPER(code) = UPPER($1) OR id::text = $1
     `, [id]);
 
     if (!group) {

@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '50');
   const group = searchParams.get('group');
+  const subgroup = searchParams.get('subgroup');
   const priority = searchParams.get('priority');
   const severity = searchParams.get('severity');
   const status = searchParams.get('status');
@@ -24,6 +25,10 @@ export async function GET(request: NextRequest) {
       conditions.push(`UPPER(g.code) = UPPER($${paramIdx++})`);
       params.push(group);
     }
+    if (subgroup) {
+      conditions.push(`t.subgroup_id = $${paramIdx++}`);
+      params.push(parseInt(subgroup));
+    }
     if (priority) {
       conditions.push(`LOWER(t.priority) = LOWER($${paramIdx++})`);
       params.push(priority);
@@ -39,8 +44,9 @@ export async function GET(request: NextRequest) {
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    const validSorts = ['created_at_ticket', 'reference', 'priority', 'severity'];
-    const sortCol = validSorts.includes(sort) ? sort : 'created_at_ticket';
+    // Validate sort column
+    const validSorts = ['created_at_ticket', 'reference', 'priority', 'severity', 'updated_at'];
+    const sortCol = validSorts.includes(sort) ? `t.${sort}` : 't.created_at_ticket';
     const sortOrder = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
     const countResult = await queryOne<{ count: string }>(
@@ -51,12 +57,15 @@ export async function GET(request: NextRequest) {
     const tickets = await query(
       `SELECT t.id, t.reference, t.summary, t.status, t.requester, t.created_at_ticket,
               t.resolved_at, t.permanently_closed_at, t.root_cause_category,
-              t.priority, t.severity, t.group_id,
-              g.code as group_code, g.name as group_name
+              t.priority, t.severity, t.group_id, t.subgroup_id,
+              t.classification_confidence, t.legacy_group, t.custom_fields,
+              g.code as group_code, g.name as group_name,
+              s.name as subgroup_name, s.code as subgroup_code
        FROM tickets t
        LEFT JOIN groups g ON t.group_id = g.id
+       LEFT JOIN subtypes s ON t.subgroup_id = s.id
        ${where}
-       ORDER BY t.${sortCol} ${sortOrder} NULLS LAST
+       ORDER BY ${sortCol} ${sortOrder} NULLS LAST
        LIMIT $${paramIdx++} OFFSET $${paramIdx++}`,
       [...params, limit, offset]
     );
@@ -77,7 +86,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const {
-      reference, summary, group_id, priority, severity, status,
+      reference, summary, group_id, subgroup_id, priority, severity, status,
       root_cause_category, requester, dynamic_fields,
     } = body;
 
@@ -102,12 +111,12 @@ export async function POST(request: NextRequest) {
 
     const result = await queryOne<{ id: number }>(`
       INSERT INTO tickets
-        (reference, summary, group_id, priority, severity, status,
+        (reference, summary, group_id, subgroup_id, priority, severity, status,
          root_cause_category, requester, custom_fields)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING id
     `, [
-      reference, summary, group_id,
+      reference, summary, group_id, subgroup_id || null,
       priority || null, severity || null, status || 'Permanently Closed',
       root_cause_category || null, requester || null,
       JSON.stringify(dynamic_fields || {}),

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 
 interface Group {
@@ -16,7 +16,6 @@ interface Subgroup {
   name: string;
 }
 
-// Dynamic fields per group (§12)
 const GROUP_FIELDS: Record<string, { key: string; label: string; type: string }[]> = {
   "G01": [
     { key: "cob_process", label: "COB Process", type: "text" },
@@ -69,8 +68,11 @@ const GROUP_FIELDS: Record<string, { key: string; label: string; type: string }[
   ],
 };
 
-export default function NewIncidentPage() {
+export default function EditIncidentPage() {
   const router = useRouter();
+  const params = useParams();
+  const id = params.id as string;
+
   const [groups, setGroups] = useState<Group[]>([]);
   const [subgroups, setSubgroups] = useState<Subgroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,27 +84,49 @@ export default function NewIncidentPage() {
     summary: "",
     group_id: "",
     subgroup_id: "",
-    priority: "Medium",
-    severity: "Severity 3",
+    priority: "",
+    severity: "",
     requester: "",
     root_cause_category: "",
   });
   const [dynamicFields, setDynamicFields] = useState<Record<string, string>>({});
 
-  // Fetch groups on mount
+  // Load groups and ticket data
   useEffect(() => {
-    fetch("/api/groups")
-      .then((r) => r.json())
-      .then(setGroups)
-      .catch(console.error)
+    Promise.all([
+      fetch("/api/groups").then((r) => r.json()),
+      fetch(`/api/incidents/${id}`).then((r) => r.json()),
+    ])
+      .then(([groupsData, ticketData]) => {
+        setGroups(groupsData);
+        if (ticketData.error) {
+          setError(ticketData.error);
+        } else {
+          // Find matching group by code
+          const matchedGroup = groupsData.find(
+            (g: Group) => g.code === ticketData.group_code || g.id === ticketData.group_id
+          );
+          setForm({
+            reference: ticketData.reference || "",
+            summary: ticketData.summary || "",
+            group_id: matchedGroup ? String(matchedGroup.id) : "",
+            subgroup_id: ticketData.subgroup_id ? String(ticketData.subgroup_id) : "",
+            priority: ticketData.priority || "Medium",
+            severity: ticketData.severity || "Severity 3",
+            requester: ticketData.requester || "",
+            root_cause_category: ticketData.root_cause_category || "",
+          });
+          setDynamicFields(ticketData.custom_fields || {});
+        }
+      })
+      .catch((err) => setError("Failed to load incident"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [id]);
 
   // Fetch subgroups when group changes (§7)
   useEffect(() => {
     if (!form.group_id) {
       setSubgroups([]);
-      setForm((f) => ({ ...f, subgroup_id: "" }));
       return;
     }
     const selectedGroup = groups.find((g) => String(g.id) === form.group_id);
@@ -110,14 +134,8 @@ export default function NewIncidentPage() {
 
     fetch(`/api/groups/${selectedGroup.code}`)
       .then((r) => r.json())
-      .then((data) => {
-        setSubgroups(data.subtypes || []);
-        setForm((f) => ({ ...f, subgroup_id: "" }));
-      })
+      .then((data) => setSubgroups(data.subtypes || []))
       .catch(console.error);
-
-    // Clear dynamic fields when group changes
-    setDynamicFields({});
   }, [form.group_id, groups]);
 
   const selectedGroupCode = groups.find((g) => String(g.id) === form.group_id)?.code || "";
@@ -136,19 +154,19 @@ export default function NewIncidentPage() {
         dynamic_fields: dynamicFields,
       };
 
-      const res = await fetch("/api/incidents", {
-        method: "POST",
+      const res = await fetch(`/api/incidents/${id}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Failed to create incident");
+        setError(data.error || "Failed to update incident");
         return;
       }
 
-      router.push(`/incidents/${data.id}`);
+      router.push(`/incidents/${id}`);
     } catch (err) {
       setError("Network error. Please try again.");
     } finally {
@@ -168,12 +186,12 @@ export default function NewIncidentPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <Link href="/incidents" className="text-sm text-blue-600 hover:underline mb-2 inline-block">
-          ← All Incidents
+        <Link href={`/incidents/${id}`} className="text-sm text-blue-600 hover:underline mb-2 inline-block">
+          ← Back to Incident
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900">Add Historical Incident</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Edit Incident</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Document a previously solved technical incident for future reference.
+          Update incident details. Created date and reference are preserved.
         </p>
       </div>
 
@@ -184,38 +202,34 @@ export default function NewIncidentPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Core fields */}
         <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Incident Details</h2>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Ticket Reference *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Ticket Reference</label>
             <input
               type="text"
               value={form.reference}
               onChange={(e) => setForm({ ...form, reference: e.target.value })}
-              placeholder="TSR-XXXXXXXX"
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Summary *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Summary</label>
             <input
               type="text"
               value={form.summary}
               onChange={(e) => setForm({ ...form, summary: e.target.value })}
-              placeholder="Brief incident title"
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
 
-          {/* Group → Subgroup (§7) */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Group *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Group</label>
               <select
                 value={form.group_id}
                 onChange={(e) => setForm({ ...form, group_id: e.target.value })}
@@ -234,10 +248,10 @@ export default function NewIncidentPage() {
                 value={form.subgroup_id}
                 onChange={(e) => setForm({ ...form, subgroup_id: e.target.value })}
                 disabled={!form.group_id || subgroups.length === 0}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-50 disabled:text-gray-400"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-50"
               >
                 <option value="">
-                  {subgroups.length === 0 ? "No subgroups available" : "Select subgroup..."}
+                  {subgroups.length === 0 ? "No subgroups" : "Select subgroup..."}
                 </option>
                 {subgroups.map((sg) => (
                   <option key={sg.id} value={sg.id}>{sg.name}</option>
@@ -279,7 +293,6 @@ export default function NewIncidentPage() {
                 type="text"
                 value={form.requester}
                 onChange={(e) => setForm({ ...form, requester: e.target.value })}
-                placeholder="Who reported it"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               />
             </div>
@@ -291,13 +304,12 @@ export default function NewIncidentPage() {
               type="text"
               value={form.root_cause_category}
               onChange={(e) => setForm({ ...form, root_cause_category: e.target.value })}
-              placeholder="e.g. Data Input Error, User Knowledge Gap"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
         </div>
 
-        {/* Dynamic group-specific fields (§12) */}
+        {/* Dynamic group-specific fields */}
         {groupDynamicFields.length > 0 && (
           <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
@@ -334,9 +346,9 @@ export default function NewIncidentPage() {
             disabled={submitting}
             className="px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
-            {submitting ? "Saving..." : "Save to Knowledge Archive"}
+            {submitting ? "Saving..." : "Save Changes"}
           </button>
-          <Link href="/incidents" className="px-4 py-2.5 text-sm text-gray-600 hover:text-gray-900">
+          <Link href={`/incidents/${id}`} className="px-4 py-2.5 text-sm text-gray-600 hover:text-gray-900">
             Cancel
           </Link>
         </div>
