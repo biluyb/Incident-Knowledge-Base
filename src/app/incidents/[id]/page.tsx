@@ -59,6 +59,8 @@ export default function IncidentDetailPage() {
     );
   }
 
+  const hasSummary = ticket.summary && ticket.summary.trim().length > 0;
+
   const metaFields = [
     { label: "Status", value: ticket.status },
     { label: "Requester", value: ticket.requester },
@@ -68,7 +70,8 @@ export default function IncidentDetailPage() {
     { label: "Root Cause Category", value: ticket.root_cause_category },
   ];
 
-  const hasSummary = ticket.summary && ticket.summary.trim().length > 0;
+  const directlyLinked = ticket.directly_linked_articles || [];
+  const groupArticles = ticket.group_articles || [];
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -125,22 +128,149 @@ export default function IncidentDetailPage() {
         )}
       </div>
 
-      {/* Group/Subgroup Context — show when description is sparse */}
-      {!hasSummary && ticket.group_name && (
-        <div className="bg-gray-50 rounded-lg border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-600 mb-2">Classification Context</h2>
-          <p className="text-sm text-gray-600">
-            This incident belongs to <strong>{ticket.group_name}</strong>
-            {ticket.subgroup_name && <span> → {ticket.subgroup_name}</span>}.
-          </p>
-          {ticket.group_description && (
-            <p className="text-sm text-gray-500 mt-2">{ticket.group_description}</p>
+      {/* ================================================================
+          DIRECTLY LINKED KNOWLEDGE BASE FIXES — the main KB content
+          These are articles linked to this specific ticket via ticket_articles
+          Shows root cause, diagnostic data, immediate fix, permanent fix
+          ================================================================ */}
+      <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
+            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+              Knowledge Base Fixes
+              {directlyLinked.length > 0 && ` (${directlyLinked.length})`}
+            </h2>
+          </div>
+
+          {directlyLinked.length === 0 && (
+            <div className="bg-gray-50 rounded-lg border border-gray-200 p-5 text-center">
+              <div className="text-2xl mb-2">📋</div>
+              <p className="text-sm text-gray-500 font-medium">No related knowledge base information found</p>
+              <p className="text-xs text-gray-400 mt-1">This incident does not have any linked knowledge base fixes yet.</p>
+              {ticket.group_code && (
+                <Link
+                  href={`/groups/${ticket.group_code}`}
+                  className="inline-block mt-3 text-xs font-medium hover:underline"
+                  style={{ color: "var(--primary)" }}
+                >
+                  Browse {ticket.group_name || ticket.group_code} Knowledge Base →
+                </Link>
+              )}
+            </div>
           )}
-          {ticket.subgroup_description && (
-            <p className="text-sm text-gray-500 mt-1">{ticket.subgroup_description}</p>
-          )}
-        </div>
-      )}
+          {directlyLinked.map((article: any) => (
+            <div key={article.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              {/* Article header */}
+              <div className="px-5 py-4 border-b border-gray-100">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  {article.subtype_code && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                      {article.subtype_code}
+                    </span>
+                  )}
+                  {article.group_code && (
+                    <Link
+                      href={`/groups/${article.group_code}`}
+                      className="text-xs text-gray-500 hover:underline"
+                    >
+                      {article.group_name || article.group_code}
+                    </Link>
+                  )}
+                </div>
+                <Link
+                  href={`/knowledge/${article.id}`}
+                  className="text-base font-semibold text-gray-900 hover:underline"
+                  style={{ color: "var(--primary)" }}
+                >
+                  {article.title}
+                </Link>
+              </div>
+
+              {/* Article content sections */}
+              <div className="px-5 py-4 space-y-4">
+                {/* Symptoms */}
+                {article.symptoms && (
+                  <div>
+                    <h3 className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-1">Problem / Symptoms</h3>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{article.symptoms}</p>
+                  </div>
+                )}
+
+                {/* Root Cause */}
+                {article.root_cause && (
+                  <div>
+                    <h3 className="text-xs font-semibold text-orange-600 uppercase tracking-wide mb-1">Root Cause</h3>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{article.root_cause}</p>
+                  </div>
+                )}
+
+                {/* Diagnostic Data */}
+                {article.diagnostic_data && (
+                  <div>
+                    <h3 className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Diagnostic Commands</h3>
+                    <div className="bg-gray-900 text-green-400 rounded-lg p-3 text-xs font-mono whitespace-pre-wrap overflow-x-auto">
+                      {article.diagnostic_data}
+                    </div>
+                  </div>
+                )}
+
+                {/* Immediate Fix */}
+                {article.immediate_fix && (
+                  <div>
+                    <h3 className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">Immediate Fix</h3>
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{article.immediate_fix}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Permanent Fix */}
+                {article.permanent_fix && (
+                  <div>
+                    <h3 className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1">Permanent Fix</h3>
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{article.permanent_fix}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Prevention */}
+                {article.prevention && (
+                  <div>
+                    <h3 className="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-1">Prevention</h3>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{article.prevention}</p>
+                  </div>
+                )}
+
+                {/* Verification */}
+                {article.verification && (
+                  <div>
+                    <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Verification</h3>
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                      {article.verification.split("\n").filter(Boolean).map((line: string, i: number) => (
+                        <label key={i} className="flex items-start gap-2 text-sm text-gray-800 py-0.5">
+                          <input type="checkbox" className="mt-1 rounded border-gray-300" />
+                          <span>{line.replace(/^[✓☐☐\-\*\d\.]+\s*/, "")}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Link to full article */}
+                <div className="pt-2 border-t border-gray-100">
+                  <Link
+                    href={`/knowledge/${article.id}`}
+                    className="text-xs font-medium hover:underline"
+                    style={{ color: "var(--primary)" }}
+                  >
+                    View full article →
+                  </Link>
+                </div>
+              </div>
+            </div>
+          ))}
+      </div>
 
       {/* Historical Metadata */}
       <div className="bg-white rounded-lg border border-gray-200 p-5">
@@ -187,14 +317,15 @@ export default function IncidentDetailPage() {
         )}
       </div>
 
-      {/* Related Knowledge */}
-      {ticket.related_articles && ticket.related_articles.length > 0 && (
+      {/* Group Knowledge Base Articles (broader context) */}
+      {groupArticles.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-            Related Knowledge
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
+            Related Group Knowledge Base
           </h2>
+          <p className="text-xs text-gray-400 mb-3">Other articles in {ticket.group_name || "this group"}</p>
           <div className="space-y-2">
-            {ticket.related_articles.map((article: any) => (
+            {groupArticles.map((article: any) => (
               <Link
                 key={article.id}
                 href={`/knowledge/${article.id}`}
@@ -211,7 +342,7 @@ export default function IncidentDetailPage() {
                     <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{article.symptoms}</p>
                   )}
                 </div>
-                <span className="text-xs font-medium flex-shrink-0" style={{ color: "var(--primary)" }}>View Solution →</span>
+                <span className="text-xs font-medium flex-shrink-0" style={{ color: "var(--primary)" }}>View →</span>
               </Link>
             ))}
           </div>
@@ -254,8 +385,8 @@ export default function IncidentDetailPage() {
         </div>
       )}
 
-      {/* Subgroup-related incidents — context when description is sparse */}
-      {!hasSummary && ticket.subgroup_incidents && ticket.subgroup_incidents.length > 0 && (
+      {/* Subgroup-related incidents */}
+      {ticket.subgroup_incidents && ticket.subgroup_incidents.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-5">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
             Other Incidents in This Subgroup

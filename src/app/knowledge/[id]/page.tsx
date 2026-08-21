@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { CopyButton } from "@/components/ui/CopyButton";
+import { CommentsSection } from "@/components/ui/CommentsSection";
 
 function Section({ title, content, copyable = false }: { title: string; content: string | null; copyable?: boolean }) {
   if (!content) return null;
@@ -106,6 +107,9 @@ export default function KnowledgeArticlePage() {
               </div>
             </div>
           )}
+
+          {/* Comments & Discussion — under the article content */}
+          <CommentsSection entityType="knowledge" entityId={article.id} />
         </div>
 
         {/* Sidebar */}

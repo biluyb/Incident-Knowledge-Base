@@ -58,8 +58,23 @@ export async function GET(
       return NextResponse.json({ error: 'Incident not found' }, { status: 404 });
     }
 
-    // Get related knowledge articles
-    const relatedArticles = await query(`
+    // Get directly linked knowledge articles via ticket_articles (with full content)
+    const directlyLinkedArticles = await query(`
+      SELECT ka.id, ka.title, ka.status, ka.symptoms, ka.root_cause,
+             ka.diagnostic_data, ka.immediate_fix, ka.permanent_fix,
+             ka.prevention, ka.verification,
+             s.code as subtype_code, s.name as subtype_name,
+             g.code as group_code, g.name as group_name
+      FROM ticket_articles ta
+      JOIN knowledge_articles ka ON ta.article_id = ka.id
+      LEFT JOIN subtypes s ON ka.subtype_id = s.id
+      LEFT JOIN groups g ON ka.group_id = g.id
+      WHERE ta.ticket_id = $1
+      ORDER BY ka.title
+    `, [ticket.id]);
+
+    // Get group-level knowledge articles (broader context)
+    const groupArticles = ticket.group_id ? await query(`
       SELECT ka.id, ka.title, ka.status, ka.symptoms, ka.root_cause, ka.immediate_fix,
              s.code as subtype_code, s.name as subtype_name,
              g.code as group_code, g.name as group_name
@@ -70,45 +85,42 @@ export async function GET(
         SELECT s2.id FROM subtypes s2 WHERE s2.group_id = $1
       ))
       AND ka.status = 'published'
+      AND ka.id NOT IN (SELECT article_id FROM ticket_articles WHERE ticket_id = $2)
       ORDER BY ka.title
-      LIMIT 10
-    `, [ticket.group_id]);
+      LIMIT 5
+    `, [ticket.group_id, ticket.id]) : Promise.resolve([]);
 
     // Get similar incidents
     const similarIncidents = await query(`
-      SELECT t.id, t.reference, t.summary, t.priority, t.severity,
-             g.code as group_code, g.name as group_name,
-             s.name as subgroup_name,
-             CASE
-               WHEN t.id = $2 THEN 0
-               ELSE GREATEST(
-                 CASE WHEN t.group_id = $3 AND $3 IS NOT NULL THEN 0.3 ELSE 0 END,
-                 CASE WHEN LOWER(COALESCE(t.root_cause_category, '')) = LOWER(COALESCE((SELECT root_cause_category FROM tickets WHERE id = $2), ''))
-                      AND t.root_cause_category IS NOT NULL THEN 0.3 ELSE 0 END,
-                 similarity(LOWER(COALESCE(t.summary, '')),
-                            LOWER(COALESCE((SELECT summary FROM tickets WHERE id = $2), '')))
-               )
-             END as similarity_score
-      FROM tickets t
-      LEFT JOIN groups g ON t.group_id = g.id
-      LEFT JOIN subtypes s ON t.subgroup_id = s.id
-      WHERE t.id != $2
-        AND (
-          t.group_id = $3
-          OR LOWER(COALESCE(t.root_cause_category, '')) = LOWER(COALESCE((SELECT root_cause_category FROM tickets WHERE id = $2), ''))
-          OR similarity(LOWER(COALESCE(t.summary, '')),
-                        LOWER(COALESCE((SELECT summary FROM tickets WHERE id = $2), ''))) > 0.1
-        )
-      HAVING GREATEST(
-        CASE WHEN t.group_id = $3 AND $3 IS NOT NULL THEN 0.3 ELSE 0 END,
-        CASE WHEN LOWER(COALESCE(t.root_cause_category, '')) = LOWER(COALESCE((SELECT root_cause_category FROM tickets WHERE id = $2), ''))
-             AND t.root_cause_category IS NOT NULL THEN 0.3 ELSE 0 END,
-        similarity(LOWER(COALESCE(t.summary, '')),
-                   LOWER(COALESCE((SELECT summary FROM tickets WHERE id = $2), '')))
-      ) > 0.1
-      ORDER BY similarity_score DESC
+      SELECT * FROM (
+        SELECT t.id, t.reference, t.summary, t.priority, t.severity,
+               g.code as group_code, g.name as group_name,
+               s.name as subgroup_name,
+               CASE
+                 WHEN t.id = $1 THEN 0
+                 ELSE GREATEST(
+                   CASE WHEN t.group_id = $2 THEN 0.3 ELSE 0 END,
+                   CASE WHEN LOWER(COALESCE(t.root_cause_category, '')) = LOWER(COALESCE((SELECT root_cause_category FROM tickets WHERE id = $1), ''))
+                        AND t.root_cause_category IS NOT NULL THEN 0.3 ELSE 0 END,
+                   similarity(LOWER(COALESCE(t.summary, '')),
+                              LOWER(COALESCE((SELECT summary FROM tickets WHERE id = $1), '')))
+                 )
+               END as similarity_score
+        FROM tickets t
+        LEFT JOIN groups g ON t.group_id = g.id
+        LEFT JOIN subtypes s ON t.subgroup_id = s.id
+        WHERE t.id != $1
+          AND (
+            t.group_id = $2
+            OR LOWER(COALESCE(t.root_cause_category, '')) = LOWER(COALESCE((SELECT root_cause_category FROM tickets WHERE id = $1), ''))
+            OR similarity(LOWER(COALESCE(t.summary, '')),
+                          LOWER(COALESCE((SELECT summary FROM tickets WHERE id = $1), ''))) > 0.1
+          )
+      ) sub
+      WHERE sub.similarity_score > 0.1
+      ORDER BY sub.similarity_score DESC
       LIMIT 5
-    `, [ticket.id, ticket.id, ticket.group_id]);
+    `, [ticket.id, ticket.group_id || 0]);
 
     // Get subgroup-related incidents (for context when description is sparse)
     let subgroupIncidents: any[] = [];
@@ -124,7 +136,8 @@ export async function GET(
 
     return NextResponse.json({
       ...ticket,
-      related_articles: relatedArticles,
+      directly_linked_articles: directlyLinkedArticles,
+      group_articles: groupArticles,
       similar_incidents: similarIncidents,
       subgroup_incidents: subgroupIncidents,
     });

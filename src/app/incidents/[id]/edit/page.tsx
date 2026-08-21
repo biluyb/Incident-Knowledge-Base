@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import { FileUpload } from "@/components/ui/FileUpload";
 
 interface Group {
   id: number;
@@ -91,6 +92,23 @@ export default function EditIncidentPage() {
   });
   const [dynamicFields, setDynamicFields] = useState<Record<string, string>>({});
 
+  // File upload state
+  const [files, setFiles] = useState<any[]>([]);
+
+  // Inline group/subgroup creation state
+  const [showNewGroup, setShowNewGroup] = useState(false);
+  const [showNewSubgroup, setShowNewSubgroup] = useState(false);
+  const [newGroupForm, setNewGroupForm] = useState({ code: "", name: "", description: "" });
+  const [newSubgroupForm, setNewSubgroupForm] = useState({ code: "", name: "", description: "" });
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [creatingSubgroup, setCreatingSubgroup] = useState(false);
+
+  const loadFiles = useCallback(() => {
+    fetch(`/api/files?ticket_id=${id}`).then((r) => r.json()).then((data) => {
+      setFiles(Array.isArray(data) ? data : []);
+    }).catch(console.error);
+  }, [id]);
+
   useEffect(() => {
     Promise.all([
       fetch("/api/groups").then((r) => r.json()),
@@ -119,7 +137,9 @@ export default function EditIncidentPage() {
       })
       .catch(() => setError("Failed to load incident"))
       .finally(() => setLoading(false));
-  }, [id]);
+
+    loadFiles();
+  }, [id, loadFiles]);
 
   useEffect(() => {
     if (!form.group_id) {
@@ -168,6 +188,75 @@ export default function EditIncidentPage() {
       setError("Network error. Please try again.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Inline group creation
+  const handleCreateGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreatingGroup(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/groups", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newGroupForm),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to create group");
+        return;
+      }
+      // Refresh groups list and select the new one
+      const groupsRes = await fetch("/api/groups");
+      const updatedGroups = await groupsRes.json();
+      setGroups(updatedGroups);
+      const newGroup = updatedGroups.find((g: Group) => g.code === newGroupForm.code.toUpperCase());
+      if (newGroup) {
+        setForm((f) => ({ ...f, group_id: String(newGroup.id), subgroup_id: "" }));
+      }
+      setShowNewGroup(false);
+      setNewGroupForm({ code: "", name: "", description: "" });
+    } catch {
+      setError("Network error creating group");
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
+
+  // Inline subgroup creation
+  const handleCreateSubgroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreatingSubgroup(true);
+    setError("");
+    try {
+      const payload = {
+        ...newSubgroupForm,
+        group_id: parseInt(form.group_id),
+      };
+      const res = await fetch("/api/admin/subgroups", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to create subgroup");
+        return;
+      }
+      // Refresh subgroups list
+      const selectedGroup = groups.find((g) => String(g.id) === form.group_id);
+      if (selectedGroup) {
+        const sgRes = await fetch(`/api/groups/${selectedGroup.code}`);
+        const sgData = await sgRes.json();
+        setSubgroups(sgData.subtypes || []);
+      }
+      setShowNewSubgroup(false);
+      setNewSubgroupForm({ code: "", name: "", description: "" });
+    } catch {
+      setError("Network error creating subgroup");
+    } finally {
+      setCreatingSubgroup(false);
     }
   };
 
@@ -226,31 +315,54 @@ export default function EditIncidentPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Group</label>
-              <select
-                value={form.group_id}
-                onChange={(e) => setForm({ ...form, group_id: e.target.value })}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              >
-                <option value="">Select group...</option>
-                {groups.map((g) => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
+              <div className="flex gap-2">
+                <select
+                  value={form.group_id}
+                  onChange={(e) => setForm({ ...form, group_id: e.target.value, subgroup_id: "" })}
+                  required
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                >
+                  <option value="">Select group...</option>
+                  {groups.map((g) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setShowNewGroup(true)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-xs font-medium hover:bg-gray-50 whitespace-nowrap"
+                  style={{ color: "var(--primary)" }}
+                  title="Create new group"
+                >
+                  + New
+                </button>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Subgroup</label>
-              <select
-                value={form.subgroup_id}
-                onChange={(e) => setForm({ ...form, subgroup_id: e.target.value })}
-                disabled={!form.group_id || subgroups.length === 0}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-50"
-              >
-                <option value="">{subgroups.length === 0 ? "No subgroups" : "Select subgroup..."}</option>
-                {subgroups.map((sg) => (
-                  <option key={sg.id} value={sg.id}>{sg.name}</option>
-                ))}
-              </select>
+              <div className="flex gap-2">
+                <select
+                  value={form.subgroup_id}
+                  onChange={(e) => setForm({ ...form, subgroup_id: e.target.value })}
+                  disabled={!form.group_id}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-50"
+                >
+                  <option value="">{subgroups.length === 0 ? "No subgroups" : "Select subgroup..."}</option>
+                  {subgroups.map((sg) => (
+                    <option key={sg.id} value={sg.id}>{sg.name}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setShowNewSubgroup(true)}
+                  disabled={!form.group_id}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-xs font-medium hover:bg-gray-50 whitespace-nowrap disabled:opacity-50"
+                  style={{ color: "var(--primary)" }}
+                  title="Create new subgroup"
+                >
+                  + New
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -335,6 +447,13 @@ export default function EditIncidentPage() {
           </div>
         )}
 
+        {/* File Uploads */}
+        <div className="bg-white rounded-lg border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Attachments</h2>
+          <p className="text-xs text-gray-400 mb-3">Upload screenshots, error logs, configuration files, or other evidence.</p>
+          <FileUpload ticketId={parseInt(id)} files={files} onFilesChanged={loadFiles} />
+        </div>
+
         <div className="flex items-center gap-3">
           <button type="submit" disabled={submitting} className="btn-primary">
             {submitting ? "Saving..." : "Save Changes"}
@@ -342,6 +461,111 @@ export default function EditIncidentPage() {
           <Link href={`/incidents/${id}`} className="btn-secondary">Cancel</Link>
         </div>
       </form>
+
+      {/* Inline New Group Modal */}
+      {showNewGroup && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="px-5 py-4 border-b border-gray-200">
+              <h3 className="text-base font-semibold text-gray-900">Create New Group</h3>
+            </div>
+            <form onSubmit={handleCreateGroup} className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Code *</label>
+                <input
+                  type="text"
+                  value={newGroupForm.code}
+                  onChange={(e) => setNewGroupForm({ ...newGroupForm, code: e.target.value })}
+                  placeholder="e.g. PAYMENTS-DIGITAL"
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                <input
+                  type="text"
+                  value={newGroupForm.name}
+                  onChange={(e) => setNewGroupForm({ ...newGroupForm, name: e.target.value })}
+                  placeholder="e.g. Payments & Digital Channels"
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  value={newGroupForm.description}
+                  onChange={(e) => setNewGroupForm({ ...newGroupForm, description: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-3 pt-2">
+                <button type="submit" disabled={creatingGroup} className="btn-primary text-sm">
+                  {creatingGroup ? "Creating..." : "Create Group"}
+                </button>
+                <button type="button" onClick={() => setShowNewGroup(false)} className="btn-secondary text-sm">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Inline New Subgroup Modal */}
+      {showNewSubgroup && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="px-5 py-4 border-b border-gray-200">
+              <h3 className="text-base font-semibold text-gray-900">Create New Subgroup</h3>
+            </div>
+            <form onSubmit={handleCreateSubgroup} className="p-5 space-y-4">
+              <div>
+                <p className="text-sm text-gray-500 mb-2">
+                  Adding to: <strong>{groups.find((g) => String(g.id) === form.group_id)?.name}</strong>
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Code *</label>
+                <input
+                  type="text"
+                  value={newSubgroupForm.code}
+                  onChange={(e) => setNewSubgroupForm({ ...newSubgroupForm, code: e.target.value })}
+                  placeholder="e.g. ST-G01-01"
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                <input
+                  type="text"
+                  value={newSubgroupForm.name}
+                  onChange={(e) => setNewSubgroupForm({ ...newSubgroupForm, name: e.target.value })}
+                  placeholder="e.g. Funds Transfer Failures"
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  value={newSubgroupForm.description}
+                  onChange={(e) => setNewSubgroupForm({ ...newSubgroupForm, description: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-3 pt-2">
+                <button type="submit" disabled={creatingSubgroup} className="btn-primary text-sm">
+                  {creatingSubgroup ? "Creating..." : "Create Subgroup"}
+                </button>
+                <button type="button" onClick={() => setShowNewSubgroup(false)} className="btn-secondary text-sm">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

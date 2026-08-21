@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const group = searchParams.get('group');
+  const subtypeId = searchParams.get('subtype_id');
   const status = searchParams.get('status') || 'published';
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '50');
@@ -23,6 +24,10 @@ export async function GET(request: NextRequest) {
     if (group) {
       conditions.push(`UPPER(g.code) = UPPER($${paramIdx++})`);
       params.push(group);
+    }
+    if (subtypeId) {
+      conditions.push(`ka.subtype_id = $${paramIdx++}`);
+      params.push(parseInt(subtypeId));
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

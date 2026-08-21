@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get('limit') || '50');
   const group = searchParams.get('group');
   const subgroup = searchParams.get('subgroup');
+  const search = searchParams.get('search');
   const priority = searchParams.get('priority');
   const severity = searchParams.get('severity');
   const status = searchParams.get('status');
@@ -24,6 +25,11 @@ export async function GET(request: NextRequest) {
     if (group) {
       conditions.push(`UPPER(g.code) = UPPER($${paramIdx++})`);
       params.push(group);
+    }
+    if (search && search.trim()) {
+      conditions.push(`(t.reference ILIKE $${paramIdx} OR t.summary ILIKE $${paramIdx})`);
+      params.push(`%${search.trim()}%`);
+      paramIdx++;
     }
     if (subgroup) {
       conditions.push(`t.subgroup_id = $${paramIdx++}`);

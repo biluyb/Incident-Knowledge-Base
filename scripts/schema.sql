@@ -251,3 +251,34 @@ CREATE TABLE IF NOT EXISTS incident_files (
 );
 
 CREATE INDEX IF NOT EXISTS idx_incident_files_ticket ON incident_files(ticket_id);
+
+-- ============================================================
+-- Knowledge Base Comments — discussion on group/subgroup pages
+-- ============================================================
+CREATE TABLE IF NOT EXISTS kb_comments (
+  id SERIAL PRIMARY KEY,
+  entity_type VARCHAR(20) NOT NULL CHECK (entity_type IN ('group', 'subtype', 'knowledge')),
+  entity_id INTEGER NOT NULL,
+  author VARCHAR(200) NOT NULL DEFAULT 'Anonymous',
+  body TEXT NOT NULL,
+  file_name VARCHAR(500),
+  file_stored VARCHAR(200),
+  file_size BIGINT,
+  file_type VARCHAR(100),
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_kb_comments_entity ON kb_comments(entity_type, entity_id);
+
+-- ============================================================
+-- Additional search indexes for typo tolerance
+-- ============================================================
+CREATE INDEX IF NOT EXISTS idx_tickets_summary_trgm ON tickets USING GIN(summary gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_tickets_reference_trgm ON tickets USING GIN(reference gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_tickets_root_cause_trgm ON tickets USING GIN(root_cause_category gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_articles_title_trgm ON knowledge_articles USING GIN(title gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_articles_symptoms_trgm ON knowledge_articles USING GIN(symptoms gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_articles_root_cause_trgm ON knowledge_articles USING GIN(root_cause gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_subtypes_name_trgm ON subtypes USING GIN(name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_groups_name_trgm ON groups USING GIN(name gin_trgm_ops);

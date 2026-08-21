@@ -173,6 +173,37 @@ export default function GroupDetailPage() {
         </div>
       </div>
 
+      {/* Knowledge articles */}
+      {group.articles && group.articles.length > 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            Knowledge Base ({group.articles.length})
+          </h2>
+          <div className="space-y-2">
+            {group.articles.map((article: any) => (
+              <Link
+                key={article.id}
+                href={`/knowledge/${article.id}`}
+                className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100"
+              >
+                {article.subtype_code && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                    {article.subtype_code}
+                  </span>
+                )}
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium text-gray-900">{article.title}</span>
+                  {article.symptoms && (
+                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{article.symptoms}</p>
+                  )}
+                </div>
+                <span className="text-xs font-medium flex-shrink-0" style={{ color: "var(--primary)" }}>View →</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Incident list */}
       <div>
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">

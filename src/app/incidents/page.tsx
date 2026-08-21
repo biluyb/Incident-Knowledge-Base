@@ -16,6 +16,7 @@ export default function IncidentsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [group, setGroup] = useState("");
+  const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState("created_at_ticket");
   const [sortOrder, setSortOrder] = useState("DESC");
 
@@ -35,6 +36,7 @@ export default function IncidentsPage() {
       order: sortOrder,
     });
     if (group) params.set("group", group);
+    if (search.trim()) params.set("search", search.trim());
 
     fetch(`/api/incidents?${params}`)
       .then((r) => r.json())
@@ -45,7 +47,22 @@ export default function IncidentsPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [page, group, sortField, sortOrder]);
+  }, [page, group, search, sortField, sortOrder]);
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return "—";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    } catch {
+      return dateStr;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -58,6 +75,28 @@ export default function IncidentsPage() {
         <Link href="/incidents/new" className="btn-primary">
           + Add Incident
         </Link>
+      </div>
+
+      {/* Search Bar */}
+      <div className="relative">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          placeholder="Search by reference or description..."
+          className="w-full px-4 py-2.5 pl-10 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)]"
+        />
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        {search && (
+          <button
+            onClick={() => { setSearch(""); setPage(1); }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            ×
+          </button>
+        )}
       </div>
 
       {/* Filters + Sort */}
@@ -131,7 +170,7 @@ export default function IncidentsPage() {
                         )}
                       </td>
                       <td className="px-4 py-2 text-xs text-gray-500 truncate max-w-[180px]">{ticket.subgroup_name || "—"}</td>
-                      <td className="px-4 py-2 text-gray-400 text-xs whitespace-nowrap">{ticket.created_at_ticket}</td>
+                      <td className="px-4 py-2 text-gray-400 text-xs whitespace-nowrap">{formatDate(ticket.created_at_ticket)}</td>
                     </tr>
                   ))}
                 </tbody>
