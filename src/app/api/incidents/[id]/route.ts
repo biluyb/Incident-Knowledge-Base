@@ -58,7 +58,10 @@ export async function GET(
       return NextResponse.json({ error: 'Incident not found' }, { status: 404 });
     }
 
-    // Get directly linked knowledge articles via ticket_articles (with full content)
+    // ============================================================
+    // PRIORITY 1: Incident-specific knowledge (directly linked)
+    // These are articles linked to this specific ticket via ticket_articles
+    // ============================================================
     const directlyLinkedArticles = await query(`
       SELECT ka.id, ka.title, ka.status, ka.symptoms, ka.root_cause,
              ka.diagnostic_data, ka.immediate_fix, ka.permanent_fix,
@@ -73,24 +76,55 @@ export async function GET(
       ORDER BY ka.title
     `, [ticket.id]);
 
-    // Get group-level knowledge articles (broader context)
-    const groupArticles = ticket.group_id ? await query(`
-      SELECT ka.id, ka.title, ka.status, ka.symptoms, ka.root_cause, ka.immediate_fix,
-             s.code as subtype_code, s.name as subtype_name,
-             g.code as group_code, g.name as group_name
-      FROM knowledge_articles ka
-      LEFT JOIN subtypes s ON ka.subtype_id = s.id
-      LEFT JOIN groups g ON ka.group_id = g.id
-      WHERE (ka.group_id = $1 OR ka.subtype_id IN (
-        SELECT s2.id FROM subtypes s2 WHERE s2.group_id = $1
-      ))
-      AND ka.status = 'published'
-      AND ka.id NOT IN (SELECT article_id FROM ticket_articles WHERE ticket_id = $2)
-      ORDER BY ka.title
-      LIMIT 5
-    `, [ticket.group_id, ticket.id]) : Promise.resolve([]);
+    // ============================================================
+    // PRIORITY 2: Subgroup knowledge base
+    // Knowledge articles specific to this incident's subgroup
+    // ============================================================
+    let subgroupArticles: any[] = [];
+    if (ticket.subgroup_id) {
+      subgroupArticles = await query(`
+        SELECT ka.id, ka.title, ka.status, ka.symptoms, ka.root_cause,
+               ka.diagnostic_data, ka.immediate_fix, ka.permanent_fix,
+               ka.prevention, ka.verification,
+               s.code as subtype_code, s.name as subtype_name,
+               g.code as group_code, g.name as group_name
+        FROM knowledge_articles ka
+        LEFT JOIN subtypes s ON ka.subtype_id = s.id
+        LEFT JOIN groups g ON ka.group_id = g.id
+        WHERE ka.subtype_id = $1
+          AND ka.status = 'published'
+          AND ka.id NOT IN (SELECT article_id FROM ticket_articles WHERE ticket_id = $2)
+        ORDER BY ka.title
+      `, [ticket.subgroup_id, ticket.id]);
+    }
 
-    // Get similar incidents
+    // ============================================================
+    // PRIORITY 3: Group knowledge base
+    // Knowledge articles for this incident's group (broader context)
+    // ============================================================
+    let groupArticles: any[] = [];
+    if (ticket.group_id) {
+      groupArticles = await query(`
+        SELECT ka.id, ka.title, ka.status, ka.symptoms, ka.root_cause,
+               ka.diagnostic_data, ka.immediate_fix, ka.permanent_fix,
+               ka.prevention, ka.verification,
+               s.code as subtype_code, s.name as subtype_name,
+               g.code as group_code, g.name as group_name
+        FROM knowledge_articles ka
+        LEFT JOIN subtypes s ON ka.subtype_id = s.id
+        LEFT JOIN groups g ON ka.group_id = g.id
+        WHERE ka.group_id = $1
+          AND ka.status = 'published'
+          AND ka.id NOT IN (SELECT article_id FROM ticket_articles WHERE ticket_id = $2)
+          AND (ka.subtype_id IS NULL OR ka.subtype_id != $3)
+        ORDER BY ka.title
+        LIMIT 5
+      `, [ticket.group_id, ticket.id, ticket.subgroup_id || 0]);
+    }
+
+    // ============================================================
+    // PRIORITY 4: Similar incidents
+    // ============================================================
     const similarIncidents = await query(`
       SELECT * FROM (
         SELECT t.id, t.reference, t.summary, t.priority, t.severity,
@@ -122,7 +156,9 @@ export async function GET(
       LIMIT 5
     `, [ticket.id, ticket.group_id || 0]);
 
-    // Get subgroup-related incidents (for context when description is sparse)
+    // ============================================================
+    // Subgroup-related incidents (for context)
+    // ============================================================
     let subgroupIncidents: any[] = [];
     if (ticket.subgroup_id) {
       subgroupIncidents = await query(`
@@ -136,8 +172,11 @@ export async function GET(
 
     return NextResponse.json({
       ...ticket,
+      // Priority-ordered knowledge
       directly_linked_articles: directlyLinkedArticles,
+      subgroup_articles: subgroupArticles,
       group_articles: groupArticles,
+      // Secondary info
       similar_incidents: similarIncidents,
       subgroup_incidents: subgroupIncidents,
     });

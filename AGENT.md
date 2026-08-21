@@ -279,6 +279,33 @@ The search engine handles common misspellings by:
 
 ## 12. Recent Changes
 
+### 2026-08-21 — Incident Detail Redesign: Solution-First Architecture
+
+Redesigned Incident Detail page to prioritize SOLUTION over metadata:
+
+**Knowledge Priority System:**
+1. Incident-specific Solution (directly linked knowledge articles via ticket_articles)
+2. Subgroup Knowledge Base (fallback when no incident-specific solution)
+3. Group Knowledge Base (broader fallback)
+4. Related Incidents (secondary)
+
+**Key Changes:**
+- Incident Detail now shows knowledge articles as PRIMARY content
+- Problem → Root Cause → Fix → Verification sections come from knowledge articles
+- Fallback for sparse incidents: shows Group/Subgroup KB when no solution exists
+- "No knowledge base information available" message when no KB exists at any level
+- Metadata (status, dates, requester) moved to secondary position
+- "Edit Incident" and "+ Add Knowledge" buttons in header
+- Knowledge articles can be edited via /knowledge/[id]/edit
+- Knowledge API now supports PUT for editing
+
+Files modified:
+- src/app/incidents/[id]/page.tsx — Complete redesign with solution-first layout
+- src/app/api/incidents/[id]/route.ts — Priority-ordered knowledge (directly_linked → subgroup → group)
+- src/app/knowledge/[id]/edit/page.tsx — New edit page for knowledge articles
+- src/app/api/knowledge/[id]/route.ts — Added PUT endpoint for editing
+- src/app/knowledge/[id]/page.tsx — Added Edit Knowledge button
+
 ### 2026-08-21 — Incident List Search, KB Always Show, Comment File Attachments
 
 Implemented:

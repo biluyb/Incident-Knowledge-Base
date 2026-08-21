@@ -76,10 +76,17 @@ export default function KnowledgeArticlePage() {
           {article.subtype_code && <Badge variant="published">{article.subtype_code}</Badge>}
           <Badge>{article.status}</Badge>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900">{article.title}</h1>
-        {article.group_name && (
-          <p className="text-sm text-gray-500 mt-1">{article.group_name}</p>
-        )}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{article.title}</h1>
+            {article.group_name && (
+              <p className="text-sm text-gray-500 mt-1">{article.group_name}</p>
+            )}
+          </div>
+          <Link href={`/knowledge/${id}/edit`} className="btn-secondary text-xs flex-shrink-0">
+            Edit Knowledge
+          </Link>
+        </div>
       </div>
 
       {/* Main content — SRS §16 Problem/Solution separation */}
