@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
+import { requirePermission, auditLog, validateRequired } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,6 +57,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requirePermission(request, 'knowledge.edit');
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   const articleId = parseInt(id) || 0;
 
@@ -78,9 +82,8 @@ export async function PUT(
       verification, temenos_contact, notes,
     } = body;
 
-    if (!title?.trim()) {
-      return NextResponse.json({ error: 'Title is required' }, { status: 400 });
-    }
+    const titleError = validateRequired(title, 'Title', 500);
+    if (titleError) return NextResponse.json({ error: titleError }, { status: 400 });
 
     await queryOne(`
       UPDATE knowledge_articles SET
@@ -115,6 +118,15 @@ export async function PUT(
       notes || null,
       articleId,
     ]);
+
+    // Audit log
+    await auditLog({
+      userId: auth.user.userId,
+      action: 'knowledge.update',
+      entityType: 'knowledge',
+      entityId: articleId,
+      details: `Updated knowledge article: ${title.trim()}`,
+    });
 
     return NextResponse.json({ message: 'Article updated' });
   } catch (error: any) {

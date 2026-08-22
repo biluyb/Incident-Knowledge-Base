@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
+import { requirePermission, auditLog, validateRequired } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,13 +20,18 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requirePermission(request, 'group.create');
+  if (auth.error) return auth.error;
+
   try {
     const body = await request.json();
     const { code, name, description } = body;
 
-    if (!code || !name) {
-      return NextResponse.json({ error: 'Code and name are required' }, { status: 400 });
-    }
+    const codeError = validateRequired(code, 'Code', 50);
+    if (codeError) return NextResponse.json({ error: codeError }, { status: 400 });
+
+    const nameError = validateRequired(name, 'Name', 500);
+    if (nameError) return NextResponse.json({ error: nameError }, { status: 400 });
 
     // Check for duplicate code
     const existing = await queryOne(
@@ -40,11 +46,19 @@ export async function POST(request: NextRequest) {
       INSERT INTO groups (code, name, description)
       VALUES ($1, $2, $3)
       RETURNING id
-    `, [code.toUpperCase(), name, description || null]);
+    `, [code.toUpperCase().trim(), name.trim(), description || null]);
 
     if (!result) {
       return NextResponse.json({ error: 'Failed to create group' }, { status: 500 });
     }
+
+    await auditLog({
+      userId: auth.user.userId,
+      action: 'group.create',
+      entityType: 'group',
+      entityId: result.id,
+      details: `Created group ${code}`,
+    });
 
     return NextResponse.json({ id: result.id, message: 'Group created' }, { status: 201 });
   } catch (error: any) {

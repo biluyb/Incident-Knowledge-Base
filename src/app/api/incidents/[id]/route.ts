@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
+import { requirePermission, auditLog } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -190,6 +191,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requirePermission(request, 'incident.edit');
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   const cleanId = id?.trim();
 
@@ -253,6 +257,15 @@ export async function PUT(
       dynamic_fields ? JSON.stringify(dynamic_fields) : null,
       ticketId,
     ]);
+
+    // Audit log
+    await auditLog({
+      userId: auth.user.userId,
+      action: 'incident.update',
+      entityType: 'incident',
+      entityId: ticketId,
+      details: `Updated incident ${reference || cleanId}`,
+    });
 
     return NextResponse.json({ message: 'Incident updated' });
   } catch (error: any) {

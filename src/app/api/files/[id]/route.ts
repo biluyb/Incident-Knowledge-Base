@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryOne } from '@/lib/db';
+import { requirePermission, auditLog } from '@/lib/api-auth';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -32,6 +33,9 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requirePermission(request, 'file.delete');
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   try {
     const file = await queryOne(
@@ -51,6 +55,14 @@ export async function DELETE(
 
     // Delete database record
     await queryOne('DELETE FROM incident_files WHERE id = $1', [parseInt(id) || 0]);
+
+    await auditLog({
+      userId: auth.user.userId,
+      action: 'file.delete',
+      entityType: 'file',
+      entityId: parseInt(id) || 0,
+      details: `Deleted file ${file.original_name}`,
+    });
 
     return NextResponse.json({ message: 'File deleted' });
   } catch (error: any) {

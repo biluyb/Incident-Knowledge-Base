@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
+import { requirePermission, auditLog } from '@/lib/api-auth';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -44,6 +45,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requirePermission(request, 'file.upload');
+  if (auth.error) return auth.error;
+
   try {
     const formData = await request.formData();
     const ticketId = formData.get('ticket_id') as string;
@@ -62,6 +66,9 @@ export async function POST(request: NextRequest) {
     if (!ALLOWED_TYPES.includes(file.type) && !file.name.endsWith('.log') && !file.name.endsWith('.sql')) {
       return NextResponse.json({ error: 'File type not allowed' }, { status: 400 });
     }
+
+    // Sanitize filename
+    const originalName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').substring(0, 255);
 
     // Verify ticket exists
     const ticket = await queryOne('SELECT id FROM tickets WHERE id = $1', [parseInt(ticketId)]);
@@ -85,7 +92,7 @@ export async function POST(request: NextRequest) {
       RETURNING id
     `, [
       parseInt(ticketId),
-      file.name,
+      originalName,
       safeFilename,
       file.size,
       file.type || 'application/octet-stream',
@@ -94,6 +101,14 @@ export async function POST(request: NextRequest) {
     if (!result) {
       return NextResponse.json({ error: 'Failed to save file record' }, { status: 500 });
     }
+
+    await auditLog({
+      userId: auth.user.userId,
+      action: 'file.upload',
+      entityType: 'file',
+      entityId: result.id,
+      details: `Uploaded ${originalName} to incident ${ticketId}`,
+    });
 
     return NextResponse.json({ id: result.id, message: 'File uploaded' }, { status: 201 });
   } catch (error: any) {

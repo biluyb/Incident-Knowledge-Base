@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
+import { requirePermission, auditLog, validateRequired } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,12 +32,21 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requirePermission(request, 'subtype.create');
+  if (auth.error) return auth.error;
+
   try {
     const body = await request.json();
     const { code, name, description, group_id } = body;
 
-    if (!code || !name || !group_id) {
-      return NextResponse.json({ error: 'Code, name, and group are required' }, { status: 400 });
+    const codeError = validateRequired(code, 'Code', 20);
+    if (codeError) return NextResponse.json({ error: codeError }, { status: 400 });
+
+    const nameError = validateRequired(name, 'Name', 500);
+    if (nameError) return NextResponse.json({ error: nameError }, { status: 400 });
+
+    if (!group_id) {
+      return NextResponse.json({ error: 'Group is required' }, { status: 400 });
     }
 
     // Verify group exists
@@ -58,11 +68,19 @@ export async function POST(request: NextRequest) {
       INSERT INTO subtypes (code, name, description, group_id)
       VALUES ($1, $2, $3, $4)
       RETURNING id
-    `, [code.toUpperCase(), name, description || null, group_id]);
+    `, [code.toUpperCase().trim(), name.trim(), description || null, group_id]);
 
     if (!result) {
       return NextResponse.json({ error: 'Failed to create subgroup' }, { status: 500 });
     }
+
+    await auditLog({
+      userId: auth.user.userId,
+      action: 'subtype.create',
+      entityType: 'subtype',
+      entityId: result.id,
+      details: `Created subgroup ${code} in group ${group_id}`,
+    });
 
     return NextResponse.json({ id: result.id, message: 'Subgroup created' }, { status: 201 });
   } catch (error: any) {

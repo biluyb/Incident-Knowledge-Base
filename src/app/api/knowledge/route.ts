@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
+import { requirePermission, auditLog, validateRequired } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +51,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requirePermission(request, 'knowledge.create');
+  if (auth.error) return auth.error;
+
   try {
     const body = await request.json();
     const {
@@ -59,11 +63,12 @@ export async function POST(request: NextRequest) {
       temenos_contact, notes,
     } = body;
 
-    if (!title || !reference || !group_id) {
-      return NextResponse.json(
-        { error: 'Title, reference, and group are required' },
-        { status: 400 }
-      );
+    // Validate required fields
+    const titleError = validateRequired(title, 'Title', 500);
+    if (titleError) return NextResponse.json({ error: titleError }, { status: 400 });
+
+    if (!group_id) {
+      return NextResponse.json({ error: 'Group is required' }, { status: 400 });
     }
 
     // Create the knowledge article
@@ -74,7 +79,7 @@ export async function POST(request: NextRequest) {
       VALUES ($1, $2, $3, 'published', $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING id
     `, [
-      title, group_id, subtype_id || null,
+      title.trim(), group_id, subtype_id || null,
       symptoms || null, root_cause || null, diagnostic_data || null,
       immediate_fix || null, permanent_fix || null, prevention || null,
       verification || null, temenos_contact || null, notes || null,
@@ -85,17 +90,28 @@ export async function POST(request: NextRequest) {
     }
 
     // Link to existing ticket if reference matches
-    const ticket = await queryOne<{ id: number }>(
-      'SELECT id FROM tickets WHERE UPPER(reference) = UPPER($1)',
-      [reference]
-    );
-
-    if (ticket) {
-      await query(
-        'INSERT INTO ticket_articles (ticket_id, article_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-        [ticket.id, article.id]
+    if (reference) {
+      const ticket = await queryOne<{ id: number }>(
+        'SELECT id FROM tickets WHERE UPPER(reference) = UPPER($1)',
+        [reference]
       );
+
+      if (ticket) {
+        await query(
+          'INSERT INTO ticket_articles (ticket_id, article_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [ticket.id, article.id]
+        );
+      }
     }
+
+    // Audit log
+    await auditLog({
+      userId: auth.user.userId,
+      action: 'knowledge.create',
+      entityType: 'knowledge',
+      entityId: article.id,
+      details: `Created knowledge article: ${title.trim()}`,
+    });
 
     return NextResponse.json({ id: article.id, message: 'Article created' }, { status: 201 });
   } catch (error: any) {

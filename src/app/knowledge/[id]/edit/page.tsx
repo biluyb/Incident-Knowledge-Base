@@ -16,6 +16,23 @@ interface Subgroup {
   name: string;
 }
 
+interface Reference {
+  id?: number;
+  title: string;
+  url: string;
+  reference_type: string;
+  description: string;
+}
+
+interface Contact {
+  id?: number;
+  name: string;
+  email: string;
+  teams: string;
+  phone: string;
+  notes: string;
+}
+
 export default function EditKnowledgePage() {
   const router = useRouter();
   const params = useParams();
@@ -41,6 +58,9 @@ export default function EditKnowledgePage() {
     temenos_contact: "",
     notes: "",
   });
+
+  const [references, setReferences] = useState<Reference[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
 
   // Load groups
   useEffect(() => {
@@ -84,6 +104,27 @@ export default function EditKnowledgePage() {
           temenos_contact: data.temenos_contact || "",
           notes: data.notes || "",
         });
+        // Load references
+        if (data.references) {
+          setReferences(data.references.map((r: any) => ({
+            id: r.id,
+            title: r.title || "",
+            url: r.url || "",
+            reference_type: r.reference_type || "",
+            description: r.description || "",
+          })));
+        }
+        // Load contacts
+        if (data.contacts) {
+          setContacts(data.contacts.map((c: any) => ({
+            id: c.id,
+            name: c.name || "",
+            email: c.email || "",
+            teams: c.teams || "",
+            phone: c.phone || "",
+            notes: c.notes || "",
+          })));
+        }
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -91,6 +132,34 @@ export default function EditKnowledgePage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleReferenceChange = (index: number, field: keyof Reference, value: string) => {
+    const updated = [...references];
+    updated[index] = { ...updated[index], [field]: value };
+    setReferences(updated);
+  };
+
+  const addReference = () => {
+    setReferences([...references, { title: "", url: "", reference_type: "", description: "" }]);
+  };
+
+  const removeReference = (index: number) => {
+    setReferences(references.filter((_, i) => i !== index));
+  };
+
+  const handleContactChange = (index: number, field: keyof Contact, value: string) => {
+    const updated = [...contacts];
+    updated[index] = { ...updated[index], [field]: value };
+    setContacts(updated);
+  };
+
+  const addContact = () => {
+    setContacts([...contacts, { name: "", email: "", teams: "", phone: "", notes: "" }]);
+  };
+
+  const removeContact = (index: number) => {
+    setContacts(contacts.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -104,6 +173,7 @@ export default function EditKnowledgePage() {
     setError("");
 
     try {
+      // Save article fields
       const res = await fetch(`/api/knowledge/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -117,6 +187,32 @@ export default function EditKnowledgePage() {
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Failed to update article");
+        return;
+      }
+
+      // Save references
+      const refRes = await fetch(`/api/knowledge/${id}/references`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ references }),
+      });
+
+      if (!refRes.ok) {
+        const refData = await refRes.json();
+        setError(refData.error || "Failed to update references");
+        return;
+      }
+
+      // Save contacts
+      const conRes = await fetch(`/api/knowledge/${id}/contacts`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contacts }),
+      });
+
+      if (!conRes.ok) {
+        const conData = await conRes.json();
+        setError(conData.error || "Failed to update contacts");
         return;
       }
 
@@ -315,6 +411,168 @@ export default function EditKnowledgePage() {
               placeholder="How was the solution confirmed? (one step per line)"
             />
           </div>
+        </div>
+
+        {/* References */}
+        <div className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">References</h2>
+            <button
+              type="button"
+              onClick={addReference}
+              className="text-xs px-3 py-1 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+              style={{ color: "var(--primary)" }}
+            >
+              + Add Reference
+            </button>
+          </div>
+
+          {references.length === 0 && (
+            <p className="text-xs text-gray-400">No references added yet.</p>
+          )}
+
+          {references.map((ref, index) => (
+            <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-3 relative">
+              <button
+                type="button"
+                onClick={() => removeReference(index)}
+                className="absolute top-2 right-2 text-gray-400 hover:text-red-500 text-xs"
+              >
+                ✕ Remove
+              </button>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Title</label>
+                  <input
+                    type="text"
+                    value={ref.title}
+                    onChange={(e) => handleReferenceChange(index, "title", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    placeholder="Reference title"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">URL</label>
+                  <input
+                    type="url"
+                    value={ref.url}
+                    onChange={(e) => handleReferenceChange(index, "url", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
+                  <input
+                    type="text"
+                    value={ref.reference_type}
+                    onChange={(e) => handleReferenceChange(index, "reference_type", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    placeholder="e.g. documentation, article, forum"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+                  <input
+                    type="text"
+                    value={ref.description}
+                    onChange={(e) => handleReferenceChange(index, "description", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    placeholder="Brief description"
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Contacts */}
+        <div className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Contacts</h2>
+            <button
+              type="button"
+              onClick={addContact}
+              className="text-xs px-3 py-1 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+              style={{ color: "var(--primary)" }}
+            >
+              + Add Contact
+            </button>
+          </div>
+
+          {contacts.length === 0 && (
+            <p className="text-xs text-gray-400">No contacts added yet.</p>
+          )}
+
+          {contacts.map((contact, index) => (
+            <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-3 relative">
+              <button
+                type="button"
+                onClick={() => removeContact(index)}
+                className="absolute top-2 right-2 text-gray-400 hover:text-red-500 text-xs"
+              >
+                ✕ Remove
+              </button>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Name</label>
+                  <input
+                    type="text"
+                    value={contact.name}
+                    onChange={(e) => handleContactChange(index, "name", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    placeholder="Contact name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={contact.email}
+                    onChange={(e) => handleContactChange(index, "email", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    placeholder="email@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Phone</label>
+                  <input
+                    type="text"
+                    value={contact.phone}
+                    onChange={(e) => handleContactChange(index, "phone", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    placeholder="Phone number"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Teams / Department</label>
+                  <input
+                    type="text"
+                    value={contact.teams}
+                    onChange={(e) => handleContactChange(index, "teams", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    placeholder="Team or department"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+                  <input
+                    type="text"
+                    value={contact.notes}
+                    onChange={(e) => handleContactChange(index, "notes", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    placeholder="Additional notes"
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Additional Info */}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Navigation } from "@/components/Navigation";
+import { AuthProvider } from "@/components/AuthProvider";
 
 export const metadata: Metadata = {
   title: "Tsehay Bank Incident Knowledge Base",
@@ -15,14 +16,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-gray-50 text-gray-900 antialiased">
-        <div className="flex min-h-screen">
-          <Navigation />
-          <main className="flex-1 ml-0 md:ml-64">
-            <div className="p-4 md:p-8 max-w-7xl mx-auto">
-              {children}
-            </div>
-          </main>
-        </div>
+        <AuthProvider>
+          <div className="flex min-h-screen">
+            <Navigation />
+            <main className="flex-1 ml-0 md:ml-64">
+              <div className="p-4 md:p-8 max-w-7xl mx-auto">
+                {children}
+              </div>
+            </main>
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );

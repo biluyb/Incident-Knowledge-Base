@@ -8,9 +8,12 @@
     "start": "next start",
     "lint": "eslint",
     "import": "tsx scripts/import-xlsx.ts",
-    "db:setup": "psql -d tcsp_incident_kb -f scripts/schema.sql"
+    "db:setup": "psql -d tcsp_incident_kb -f scripts/schema.sql",
+    "create-admin": "tsx scripts/create-admin.ts"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "jose": "^6.2.10",
     "next": "16.3.1",
     "pg": "^8.13.0",
     "react": "19.2.8",
@@ -19,6 +22,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/pg": "^8.11.0",
     "@types/react": "^19",

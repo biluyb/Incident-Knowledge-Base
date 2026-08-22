@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useAuth } from "./AuthProvider";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: "dashboard" },
@@ -13,11 +14,12 @@ const navItems = [
 ];
 
 const secondaryItems = [
-  { href: "/incidents/new", label: "Add Incident", icon: "add" },
+  { href: "/incidents/new", label: "Add Incident", icon: "add", permission: "incident.create" },
 ];
 
 const adminItems = [
-  { href: "/admin", label: "Admin", icon: "admin" },
+  { href: "/admin", label: "Admin", icon: "admin", permission: "user.manage" },
+  { href: "/admin/users", label: "Users", icon: "users", permission: "user.view" },
 ];
 
 const iconSvgs: Record<string, React.ReactNode> = {
@@ -57,11 +59,22 @@ const iconSvgs: Record<string, React.ReactNode> = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
   ),
+  users: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+    </svg>
+  ),
 };
 
 export function Navigation() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, loading, logout, hasPermission } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    setMobileOpen(false);
+  };
 
   return (
     <>
@@ -128,45 +141,79 @@ export function Navigation() {
           {/* Divider */}
           <div className="my-3 border-t border-gray-100" />
 
-          {/* Secondary actions */}
-          {secondaryItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
-            >
-              <span className="flex-shrink-0">{iconSvgs[item.icon]}</span>
-              {item.label}
-            </Link>
-          ))}
-
-          <div className="my-3 border-t border-gray-100" />
-
-          {/* Admin */}
-          {adminItems.map((item) => {
-            const isActive = pathname.startsWith(item.href);
+          {/* Secondary actions - only show if user has permission */}
+          {secondaryItems.map((item) => {
+            if (item.permission && !hasPermission(item.permission)) return null;
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                  ${isActive
-                    ? "nav-active"
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                  }`}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
               >
                 <span className="flex-shrink-0">{iconSvgs[item.icon]}</span>
                 {item.label}
               </Link>
             );
           })}
+
+          {/* Admin - only show if user has permission */}
+          {adminItems.some((item) => hasPermission(item.permission)) && (
+            <>
+              <div className="my-3 border-t border-gray-100" />
+              {adminItems.map((item) => {
+                if (!hasPermission(item.permission)) return null;
+                const isActive = pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                      ${isActive
+                        ? "nav-active"
+                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                      }`}
+                  >
+                    <span className="flex-shrink-0">{iconSvgs[item.icon]}</span>
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </>
+          )}
         </nav>
 
-        {/* Footer */}
+        {/* User info / Auth */}
         <div className="p-4 border-t border-gray-100">
-          <p className="text-xs text-gray-400 text-center">v1.0 — Tsehay Bank</p>
+          {!loading && user ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-700 truncate">{user.name}</p>
+                  <p className="text-xs text-gray-400 truncate">{user.role}</p>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="w-full text-xs text-gray-500 hover:text-gray-700 text-center py-1"
+              >
+                Sign out
+              </button>
+            </div>
+          ) : !loading ? (
+            <Link
+              href="/login"
+              className="block text-center text-xs font-medium py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+              style={{ color: "var(--primary)" }}
+            >
+              Sign in
+            </Link>
+          ) : null}
+          <p className="text-xs text-gray-400 text-center mt-2">v1.0 — Tsehay Bank</p>
         </div>
       </aside>
     </>

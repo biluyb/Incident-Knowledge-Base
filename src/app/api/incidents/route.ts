@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
+import { requirePermission, auditLog, validateRequired, validateString } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,6 +90,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requirePermission(request, 'incident.create');
+  if (auth.error) return auth.error;
+
   try {
     const body = await request.json();
     const {
@@ -96,9 +100,16 @@ export async function POST(request: NextRequest) {
       root_cause_category, requester, dynamic_fields,
     } = body;
 
-    if (!reference || !summary || !group_id) {
+    // Validate required fields
+    const refError = validateRequired(reference, 'Reference', 50);
+    if (refError) return NextResponse.json({ error: refError }, { status: 400 });
+
+    const summaryError = validateRequired(summary, 'Summary', 2000);
+    if (summaryError) return NextResponse.json({ error: summaryError }, { status: 400 });
+
+    if (!group_id) {
       return NextResponse.json(
-        { error: 'Reference, summary, and group are required' },
+        { error: 'Group is required' },
         { status: 400 }
       );
     }
@@ -122,7 +133,7 @@ export async function POST(request: NextRequest) {
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING id
     `, [
-      reference, summary, group_id, subgroup_id || null,
+      reference.trim(), summary.trim(), group_id, subgroup_id || null,
       priority || null, severity || null, status || 'Permanently Closed',
       root_cause_category || null, requester || null,
       JSON.stringify(dynamic_fields || {}),
@@ -131,6 +142,15 @@ export async function POST(request: NextRequest) {
     if (!result) {
       return NextResponse.json({ error: 'Failed to create incident' }, { status: 500 });
     }
+
+    // Audit log
+    await auditLog({
+      userId: auth.user.userId,
+      action: 'incident.create',
+      entityType: 'incident',
+      entityId: result.id,
+      details: `Created incident ${reference}`,
+    });
 
     return NextResponse.json({ id: result.id, message: 'Incident created' }, { status: 201 });
   } catch (error: any) {

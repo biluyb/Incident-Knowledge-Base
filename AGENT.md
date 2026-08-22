@@ -60,6 +60,7 @@ All focus rings, active nav states, and primary buttons use the primary green.
 | Backend | Next.js API Routes (App Router) |
 | Database | PostgreSQL 16 (with pg_trgm, uuid-ossp extensions) |
 | ORM | None — raw SQL via `pg` driver |
+| Authentication | JWT (jose) + bcryptjs |
 | Search | PostgreSQL Full-Text Search + pg_trgm trigram similarity + ILIKE fallback |
 | Excel Import | xlsx library |
 | Dev/Build | tsx (TypeScript execution), Turbopack |
@@ -205,6 +206,11 @@ Each group displays relevant fields on the incident creation/edit form:
 
 ## 10. Completed Features
 
+- [x] **Role-Based Access Control (RBAC)** — 4 roles (Admin, Knowledge Manager, Contributor, Viewer)
+- [x] **JWT Authentication** — Secure session management with httpOnly cookies
+- [x] **User Management** — Admin can create, edit, delete users and change roles
+- [x] **Audit Logging** — All significant actions tracked in audit_log table
+- [x] **API Authorization** — All endpoints protected with permission checks
 - [x] Admin Group & Subgroup Management — CRUD via /admin page, modals for create/edit
 - [x] Incident file uploads — upload, view, download, delete via FileUpload component
 - [x] File upload on incident edit — FileUpload component integrated in edit form
@@ -453,12 +459,12 @@ Implemented:
 
 ## 13. Known Issues
 
-1. **No authentication** — users table is empty, no login system (editor/admin roles assumed)
-2. **No audit trail** — audit_log table exists but not populated
-3. **Knowledge articles only for G02 and G03** — Other domains (G01, G04-G08) need content
-4. **No archiving/restore** — instruction §17 requires soft-delete capability
-5. **No Excel export** — only import exists
-6. **Build _global-error warning** — pre-existing Next.js prerender issue, not affecting functionality
+1. **Knowledge articles only for G02 and G03** — Other domains (G01, G04-G08) need content
+2. **No archiving/restore** — instruction §17 requires soft-delete capability
+3. **No Excel export** — only import exists
+4. **Build _global-error warning** — pre-existing Next.js prerender issue, not affecting functionality
+5. **No CSRF tokens** — Add for state-changing operations
+6. **No rate limiting** — Add to prevent abuse
 
 ## 14. Important Design Decisions
 
@@ -491,12 +497,12 @@ Implemented:
 
 ## 16. Next Tasks (Priority Order)
 
-1. **Authentication** — login system with Viewer/Editor/Admin roles (§20)
-2. **Full custom field system** — admin-create fields per group without code changes (§13)
-3. **Archiving** — soft-delete with restore capability (§17)
-4. **Knowledge articles for remaining domains** — G01, G04-G08 need content
-5. **Audit trail** — track changes (§21)
-6. **Excel export** — export incidents and knowledge articles
+1. **Full custom field system** — admin-create fields per group without code changes (§13)
+2. **Archiving** — soft-delete with restore capability (§17)
+3. **Knowledge articles for remaining domains** — G01, G04-G08 need content
+4. **Excel export** — export incidents and knowledge articles
+5. **Rate limiting** — Add to prevent abuse
+6. **CSRF protection** — Add tokens for state-changing operations
 
 ## 17. Development Rules
 

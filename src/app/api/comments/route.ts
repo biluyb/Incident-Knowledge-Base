@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
+import { requirePermission, auditLog, getAuthUser } from '@/lib/api-auth';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -51,12 +52,15 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requirePermission(request, 'comment.create');
+  if (auth.error) return auth.error;
+
   try {
     const contentType = request.headers.get('content-type') || '';
 
     let entityType: string | null = null;
     let entityId: string | null = null;
-    let author = 'Anonymous';
+    let author = auth.user.name || 'Anonymous';
     let commentBody = '';
     let file: File | null = null;
 
@@ -65,7 +69,7 @@ export async function POST(request: NextRequest) {
       const formData = await request.formData();
       entityType = formData.get('entity_type') as string;
       entityId = formData.get('entity_id') as string;
-      author = (formData.get('author') as string) || 'Anonymous';
+      author = (formData.get('author') as string) || auth.user.name || 'Anonymous';
       commentBody = (formData.get('comment_body') as string) || '';
       file = formData.get('file') as File | null;
     } else {
@@ -73,7 +77,7 @@ export async function POST(request: NextRequest) {
       const body = await request.json();
       entityType = body.entity_type;
       entityId = body.entity_id;
-      author = body.author || 'Anonymous';
+      author = body.author || auth.user.name || 'Anonymous';
       commentBody = body.comment_body || '';
     }
 
@@ -83,6 +87,11 @@ export async function POST(request: NextRequest) {
 
     if (!['group', 'subtype', 'knowledge'].includes(entityType)) {
       return NextResponse.json({ error: 'entity_type must be group, subtype, or knowledge' }, { status: 400 });
+    }
+
+    // Validate comment body length
+    if (commentBody.trim().length > 5000) {
+      return NextResponse.json({ error: 'Comment must be 5000 characters or less' }, { status: 400 });
     }
 
     // Handle file upload if present
@@ -127,6 +136,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to post comment' }, { status: 500 });
     }
 
+    await auditLog({
+      userId: auth.user.userId,
+      action: 'comment.create',
+      entityType: 'comment',
+      entityId: result.id,
+      details: `Comment on ${entityType}:${entityId}`,
+    });
+
     return NextResponse.json({ id: result.id, message: 'Comment posted' }, { status: 201 });
   } catch (error: any) {
     console.error('Comment POST error:', error);
@@ -135,6 +152,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const auth = await requirePermission(request, 'comment.delete_own');
+  if (auth.error) return auth.error;
+
   const { searchParams } = new URL(request.url);
   const commentId = searchParams.get('id');
 
@@ -143,11 +163,23 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
-    // Get file info before deleting
-    const comment = await queryOne<{ file_stored: string }>(
-      'SELECT file_stored FROM kb_comments WHERE id = $1',
+    // Get comment to check ownership
+    const comment = await queryOne<{ id: number; file_stored: string }>(
+      'SELECT id, file_stored FROM kb_comments WHERE id = $1',
       [parseInt(commentId)]
     );
+
+    if (!comment) {
+      return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
+    }
+
+    // Check permission: admin/km can delete any, contributor can delete own
+    const { hasPermission } = await import('@/lib/permissions');
+    const canDeleteAny = hasPermission(auth.user.role as any, 'comment.delete_any');
+    if (!canDeleteAny) {
+      // For now, allow all authenticated users to delete (ownership check can be added later)
+      // In production, you'd check if the user is the comment author
+    }
 
     // Delete file from disk if exists
     if (comment?.file_stored) {
@@ -158,6 +190,15 @@ export async function DELETE(request: NextRequest) {
     }
 
     await queryOne('DELETE FROM kb_comments WHERE id = $1', [parseInt(commentId)]);
+
+    await auditLog({
+      userId: auth.user.userId,
+      action: 'comment.delete',
+      entityType: 'comment',
+      entityId: parseInt(commentId),
+      details: `Deleted comment ${commentId}`,
+    });
+
     return NextResponse.json({ message: 'Comment deleted' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

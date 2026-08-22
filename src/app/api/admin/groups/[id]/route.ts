@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
+import { requirePermission, auditLog } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +37,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requirePermission(request, 'group.edit');
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   try {
     const body = await request.json();
@@ -66,6 +70,14 @@ export async function PUT(
       WHERE id = $4
     `, [code?.toUpperCase() || null, name || null, description, parseInt(id) || 0]);
 
+    await auditLog({
+      userId: auth.user.userId,
+      action: 'group.update',
+      entityType: 'group',
+      entityId: parseInt(id) || 0,
+      details: `Updated group ${code || id}`,
+    });
+
     return NextResponse.json({ message: 'Group updated' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -76,6 +88,9 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requirePermission(request, 'group.delete');
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   try {
     const group = await queryOne('SELECT id FROM groups WHERE id = $1', [parseInt(id) || 0]);
@@ -98,6 +113,14 @@ export async function DELETE(
     // Delete subtypes first
     await query('DELETE FROM subtypes WHERE group_id = $1', [parseInt(id) || 0]);
     await query('DELETE FROM groups WHERE id = $1', [parseInt(id) || 0]);
+
+    await auditLog({
+      userId: auth.user.userId,
+      action: 'group.delete',
+      entityType: 'group',
+      entityId: parseInt(id) || 0,
+      details: `Deleted group ${id}`,
+    });
 
     return NextResponse.json({ message: 'Group deleted' });
   } catch (error: any) {
