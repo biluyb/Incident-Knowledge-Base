@@ -35,6 +35,14 @@ export default function ProfilePage() {
   const [editEmail, setEditEmail] = useState("");
   const [isDirty, setIsDirty] = useState(false);
 
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
+
   const fetchProfile = useCallback(async () => {
     try {
       const res = await fetch("/api/auth/profile");
@@ -274,6 +282,133 @@ export default function ProfilePage() {
                 Cancel
               </button>
             )}
+          </div>
+        </form>
+      </div>
+
+      {/* Change Password */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Change Password
+        </h3>
+
+        {passwordError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700 mb-4">
+            {passwordError}
+          </div>
+        )}
+
+        {passwordSuccess && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700 mb-4">
+            {passwordSuccess}
+          </div>
+        )}
+
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setPasswordError("");
+            setPasswordSuccess("");
+
+            if (!currentPassword) {
+              setPasswordError("Current password is required");
+              return;
+            }
+
+            if (!newPassword) {
+              setPasswordError("New password is required");
+              return;
+            }
+
+            if (newPassword.length < 8) {
+              setPasswordError("New password must be at least 8 characters");
+              return;
+            }
+
+            if (newPassword !== confirmPassword) {
+              setPasswordError("New passwords do not match");
+              return;
+            }
+
+            setChangingPassword(true);
+            try {
+              const res = await fetch("/api/auth/profile/password", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ currentPassword, newPassword }),
+              });
+
+              const data = await res.json();
+              if (!res.ok) {
+                setPasswordError(data.error || "Failed to change password");
+                return;
+              }
+
+              setPasswordSuccess("Password updated successfully");
+              setCurrentPassword("");
+              setNewPassword("");
+              setConfirmPassword("");
+            } catch {
+              setPasswordError("Network error. Please try again.");
+            } finally {
+              setChangingPassword(false);
+            }
+          }}
+          className="space-y-4"
+        >
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Current Password
+            </label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)]"
+              autoComplete="current-password"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              New Password
+            </label>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)]"
+              autoComplete="new-password"
+              minLength={8}
+              required
+            />
+            <p className="mt-1 text-xs text-gray-500">Minimum 8 characters</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Confirm New Password
+            </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)]"
+              autoComplete="new-password"
+              minLength={8}
+              required
+            />
+          </div>
+
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={changingPassword}
+              className="btn-primary text-sm disabled:opacity-50"
+            >
+              {changingPassword ? "Changing..." : "Change Password"}
+            </button>
           </div>
         </form>
       </div>
