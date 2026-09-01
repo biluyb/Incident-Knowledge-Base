@@ -52,8 +52,10 @@ export async function POST(request: NextRequest) {
     // Set session cookie
     await setSessionCookie(token);
 
-    // Update last login
-    await updateLastLogin(user.id);
+    // Update last login (fire-and-forget — don't block the login response)
+    updateLastLogin(user.id).catch((err) =>
+      console.error('Failed to update last_login:', err)
+    );
 
     return NextResponse.json({
       message: 'Login successful',

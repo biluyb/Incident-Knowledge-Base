@@ -118,11 +118,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } finally {
-      setUser(null);
-    }
+    // Fire-and-forget: clear session on server, don't wait
+    fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    setUser(null);
   };
 
   const hasRole = (role: string) => {

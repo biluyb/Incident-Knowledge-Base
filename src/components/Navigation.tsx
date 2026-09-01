@@ -1,9 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "./AuthProvider";
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Admin",
+  knowledge_manager: "Knowledge Manager",
+  contributor: "Contributor",
+  viewer: "Viewer",
+};
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: "dashboard" },
@@ -71,9 +78,12 @@ export function Navigation() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, loading, logout, hasPermission } = useAuth();
 
+  const router = useRouter();
+
   const handleLogout = async () => {
     await logout();
     setMobileOpen(false);
+    router.push("/login");
   };
 
   return (
@@ -188,15 +198,19 @@ export function Navigation() {
         <div className="p-4 border-t border-gray-100">
           {!loading && user ? (
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
+              <Link
+                href="/profile"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-2 hover:bg-gray-50 rounded-lg p-1 -m-1 transition-colors"
+              >
                 <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">
                   {user.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-700 truncate">{user.name}</p>
-                  <p className="text-xs text-gray-400 truncate">{user.role}</p>
+                  <p className="text-xs text-gray-400 truncate">{ROLE_LABELS[user.role] || user.role}</p>
                 </div>
-              </div>
+              </Link>
               <button
                 onClick={handleLogout}
                 className="w-full text-xs text-gray-500 hover:text-gray-700 text-center py-1"

@@ -35,8 +35,9 @@ export default function LoginPage() {
       }
 
       // Redirect to dashboard on success
+      // Note: AuthProvider.login() already sets user state,
+      // so no router.refresh() needed — just navigate.
       router.push("/");
-      router.refresh();
     } catch {
       setError("Network error. Please try again.");
     } finally {
