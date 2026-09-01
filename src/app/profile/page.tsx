@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import Link from "next/link";
 
@@ -35,11 +35,7 @@ export default function ProfilePage() {
   const [editEmail, setEditEmail] = useState("");
   const [isDirty, setIsDirty] = useState(false);
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     try {
       const res = await fetch("/api/auth/profile");
       const data = await res.json();
@@ -53,7 +49,11 @@ export default function ProfilePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
 
   const handleNameChange = (value: string) => {
     setEditName(value);

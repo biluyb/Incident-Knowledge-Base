@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -21,28 +23,17 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
-      });
+    const result = await login(email.trim(), password);
 
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Login failed");
-        return;
-      }
-
-      // Redirect to dashboard on success
-      // Note: AuthProvider.login() already sets user state,
-      // so no router.refresh() needed — just navigate.
-      router.push("/");
-    } catch {
-      setError("Network error. Please try again.");
-    } finally {
+    if (!result.success) {
+      setError(result.error || "Login failed");
       setLoading(false);
+      return;
     }
+
+    // AuthProvider.login() already set user state — no waterfall fetch needed.
+    // Just navigate to dashboard.
+    router.push("/");
   };
 
   return (

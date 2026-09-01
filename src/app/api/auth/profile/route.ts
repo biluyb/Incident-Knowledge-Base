@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser, validateRequired, validateString, validateEmail } from '@/lib/api-auth';
+import { getAuthUser, validateRequired, validateEmail } from '@/lib/api-auth';
 import { getUserById } from '@/lib/auth';
 import { queryOne } from '@/lib/db';
 import { auditLog } from '@/lib/api-auth';
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
         last_login: user.last_login,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Profile fetch error:', error);
     return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });
   }
@@ -125,7 +125,7 @@ export async function PUT(request: NextRequest) {
         status: updatedUser!.status,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Profile update error:', error);
     return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
   }

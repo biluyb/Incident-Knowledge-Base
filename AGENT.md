@@ -86,6 +86,7 @@ src/
 │   ├── knowledge/page.tsx        # Knowledge articles list
 │   ├── knowledge/[id]/page.tsx   # Knowledge article detail
 │   ├── knowledge/new/page.tsx    # Add knowledge article form
+│   ├── profile/page.tsx          # My Profile (view/edit own profile)
 │   ├── quick-lookup/page.tsx     # Keyword → Group mapping browser
 │   └── api/
 │       ├── search/route.ts       # GET /api/search?q=...
@@ -104,7 +105,8 @@ src/
 │       ├── files/[id]/download/route.ts # GET /api/files/:id/download
 │       ├── comments/route.ts     # GET/POST/DELETE /api/comments
 │       ├── keywords/route.ts     # GET /api/keywords
-│       └── stats/route.ts        # GET /api/stats (dashboard data)
+│       ├── stats/route.ts        # GET /api/stats (dashboard data)
+│       └── auth/profile/route.ts # GET/PUT /api/auth/profile (self-service)
 ├── components/
 │   ├── Navigation.tsx            # Sidebar navigation
 │   └── ui/
@@ -213,6 +215,7 @@ Each group displays relevant fields on the incident creation/edit form:
 - [x] **Audit Logging** — All significant actions tracked in audit_log table
 - [x] **API Authorization** — All endpoints protected with permission checks
 - [x] **Route Protection** — proxy.ts protects all routes (Next.js 16 convention)
+- [x] **User Profile** — Self-service profile editing (/profile page, /api/auth/profile API)
 - [x] Admin Group & Subgroup Management — CRUD via /admin page, modals for create/edit
 - [x] Incident file uploads — upload, view, download, delete via FileUpload component
 - [x] File upload on incident edit — FileUpload component integrated in edit form
@@ -253,6 +256,10 @@ Each group displays relevant fields on the incident creation/edit form:
 - [x] Custom fields support (JSONB on tickets table)
 - [x] Tsehay Bank branding (sidebar, title, metadata)
 - [x] Consistent focus states, buttons, form controls
+- [x] Optimized login — AuthProvider.login() eliminates auth waterfall, updateLastLogin fire-and-forget
+- [x] Optimized logout — fire-and-forget session clear, immediate redirect to /login
+- [x] Human-readable role labels in Navigation (Knowledge Manager, not knowledge_manager)
+- [x] Profile link in sidebar navigation
 
 ## 11. Search Engine Details
 
