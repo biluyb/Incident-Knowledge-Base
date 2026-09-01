@@ -61,20 +61,20 @@ export default function IncidentDetailPage() {
 
   const hasSummary = ticket.summary && ticket.summary.trim().length > 0;
 
-  // Knowledge articles by priority
+  // Check if incident has its own Problem & Solution content
+  const hasOwnKnowledge = ticket.problem_symptoms || ticket.root_cause ||
+    ticket.diagnostic_information || ticket.immediate_fix ||
+    ticket.permanent_fix || ticket.prevention || ticket.verification;
+
+  // Knowledge articles by priority (supplementary context)
   const directlyLinked = ticket.directly_linked_articles || [];
   const subgroupArticles = ticket.subgroup_articles || [];
   const groupArticles = ticket.group_articles || [];
   const similarIncidents = ticket.similar_incidents || [];
   const subgroupIncidents = ticket.subgroup_incidents || [];
 
-  // Check if incident has solution content (from directly linked articles)
-  const hasIncidentSolution = directlyLinked.some((a: any) =>
-    a.root_cause || a.immediate_fix || a.permanent_fix
-  );
-
-  // Check if there's any knowledge to show (any level)
-  const hasAnyKnowledge = directlyLinked.length > 0 || subgroupArticles.length > 0 || groupArticles.length > 0;
+  // Check if there's any linked knowledge to show
+  const hasAnyLinkedKnowledge = directlyLinked.length > 0 || subgroupArticles.length > 0 || groupArticles.length > 0;
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -135,88 +135,164 @@ export default function IncidentDetailPage() {
       </div>
 
       {/* ============================================================
-          SECTION 1: INCIDENT-SPECIFIC SOLUTION (Priority 1)
-          Directly linked knowledge articles with full content
+          SECTION 1: PROBLEM & SOLUTION (Primary content)
+          The incident's own knowledge structure
           ============================================================ */}
-      {directlyLinked.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500" />
-            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-              Incident Solution
-            </h2>
-            <span className="text-xs text-gray-400">({directlyLinked.length} linked article{directlyLinked.length > 1 ? 's' : ''})</span>
+      <div className="bg-white rounded-lg border border-gray-200 p-5">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
+          Problem & Solution
+        </h2>
+        <div className="space-y-5">
+          {/* Problem / Symptoms */}
+          <div>
+            <h3 className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-1">Problem / Symptoms</h3>
+            {ticket.problem_symptoms ? (
+              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{ticket.problem_symptoms}</p>
+            ) : (
+              <p className="text-sm text-gray-400 italic">Not provided</p>
+            )}
           </div>
 
-          {directlyLinked.map((article: any) => (
-            <KnowledgeArticleCard key={article.id} article={article} />
-          ))}
+          {/* Root Cause */}
+          <div>
+            <h3 className="text-xs font-semibold text-orange-600 uppercase tracking-wide mb-1">Root Cause</h3>
+            {ticket.root_cause ? (
+              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{ticket.root_cause}</p>
+            ) : (
+              <p className="text-sm text-gray-400 italic">Not provided</p>
+            )}
+          </div>
+
+          {/* Diagnostic Information */}
+          <div>
+            <h3 className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Diagnostic Information</h3>
+            {ticket.diagnostic_information ? (
+              <div className="bg-gray-900 text-green-400 rounded-lg p-3 text-xs font-mono whitespace-pre-wrap overflow-x-auto">
+                {ticket.diagnostic_information}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 italic">Not provided</p>
+            )}
+          </div>
+
+          {/* Immediate Fix */}
+          <div>
+            <h3 className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">Immediate Fix</h3>
+            {ticket.immediate_fix ? (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{ticket.immediate_fix}</p>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 italic">Not provided</p>
+            )}
+          </div>
+
+          {/* Permanent Fix */}
+          <div>
+            <h3 className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1">Permanent Fix</h3>
+            {ticket.permanent_fix ? (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{ticket.permanent_fix}</p>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 italic">Not provided</p>
+            )}
+          </div>
+
+          {/* Prevention */}
+          <div>
+            <h3 className="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-1">Prevention</h3>
+            {ticket.prevention ? (
+              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{ticket.prevention}</p>
+            ) : (
+              <p className="text-sm text-gray-400 italic">Not provided</p>
+            )}
+          </div>
+
+          {/* Verification */}
+          <div>
+            <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Verification</h3>
+            {ticket.verification ? (
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                {ticket.verification.split("\n").filter(Boolean).map((line: string, i: number) => (
+                  <label key={i} className="flex items-start gap-2 text-sm text-gray-800 py-0.5">
+                    <input type="checkbox" className="mt-1 rounded border-gray-300" />
+                    <span>{line.replace(/^[✓☐☐\-\*\d\.]+\s*/, "")}</span>
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 italic">Not provided</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ============================================================
+          SECTION 2: ADDITIONAL INFORMATION
+          ============================================================ */}
+      {(ticket.temenos_contact || ticket.notes) && (
+        <div className="bg-white rounded-lg border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
+            Additional Information
+          </h2>
+          <div className="space-y-4">
+            {ticket.temenos_contact && (
+              <div>
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Temenos Contact</h3>
+                <p className="text-sm text-gray-700">{ticket.temenos_contact}</p>
+              </div>
+            )}
+            {ticket.notes && (
+              <div>
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Notes</h3>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{ticket.notes}</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {/* ============================================================
-          SECTION 2: SUBGROUP KNOWLEDGE BASE (Priority 2)
-          When no incident-specific solution, show subgroup knowledge
+          SECTION 3: LINKED KNOWLEDGE ARTICLES (Supplementary)
+          Directly linked articles and subgroup/group knowledge
           ============================================================ */}
-      {!hasIncidentSolution && subgroupArticles.length > 0 && (
+      {hasAnyLinkedKnowledge && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-blue-500" />
             <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-              Subgroup Knowledge Base
+              Related Knowledge Base
             </h2>
-            <span className="text-xs text-gray-400">{ticket.subgroup_name}</span>
           </div>
-          {subgroupArticles.map((article: any) => (
-            <KnowledgeArticleCard key={article.id} article={article} compact />
-          ))}
-        </div>
-      )}
 
-      {/* ============================================================
-          SECTION 3: GROUP KNOWLEDGE BASE (Priority 3)
-          Broader group knowledge as fallback
-          ============================================================ */}
-      {!hasIncidentSolution && subgroupArticles.length === 0 && groupArticles.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-purple-500" />
-            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-              Group Knowledge Base
-            </h2>
-            <span className="text-xs text-gray-400">{ticket.group_name}</span>
-          </div>
-          {groupArticles.map((article: any) => (
-            <KnowledgeArticleCard key={article.id} article={article} compact />
-          ))}
-        </div>
-      )}
+          {/* Directly linked articles */}
+          {directlyLinked.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs text-gray-400">Directly linked ({directlyLinked.length})</p>
+              {directlyLinked.map((article: any) => (
+                <KnowledgeArticleCard key={article.id} article={article} compact />
+              ))}
+            </div>
+          )}
 
-      {/* ============================================================
-          FALLBACK: No knowledge available
-          ============================================================ */}
-      {!hasAnyKnowledge && (
-        <div className="bg-gray-50 rounded-lg border border-gray-200 p-6 text-center">
-          <div className="text-3xl mb-3">📋</div>
-          <p className="text-sm text-gray-600 font-medium">No knowledge base information available</p>
-          <p className="text-xs text-gray-400 mt-1 mb-4">
-            This incident does not have linked knowledge base solutions yet.
-          </p>
-          {ticket.group_code && (
-            <div className="flex items-center justify-center gap-3">
-              <Link
-                href={`/groups/${ticket.group_code}`}
-                className="text-xs font-medium hover:underline"
-                style={{ color: "var(--primary)" }}
-              >
-                Browse {ticket.group_name} Knowledge Base →
-              </Link>
-              <Link
-                href={`/knowledge/new?group=${ticket.group_code}${ticket.subgroup_id ? `&subtype=${ticket.subgroup_id}` : ''}`}
-                className="btn-primary text-xs"
-              >
-                + Add Knowledge
-              </Link>
+          {/* Subgroup articles */}
+          {!hasOwnKnowledge && subgroupArticles.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs text-gray-400">Subgroup: {ticket.subgroup_name}</p>
+              {subgroupArticles.map((article: any) => (
+                <KnowledgeArticleCard key={article.id} article={article} compact />
+              ))}
+            </div>
+          )}
+
+          {/* Group articles */}
+          {!hasOwnKnowledge && subgroupArticles.length === 0 && groupArticles.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs text-gray-400">Group: {ticket.group_name}</p>
+              {groupArticles.map((article: any) => (
+                <KnowledgeArticleCard key={article.id} article={article} compact />
+              ))}
             </div>
           )}
         </div>

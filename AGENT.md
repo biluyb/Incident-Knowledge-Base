@@ -209,6 +209,7 @@ Each group displays relevant fields on the incident creation/edit form:
 
 ## 10. Completed Features
 
+- [x] **Incident Problem & Solution Structure** — Every incident supports 9 knowledge fields (Problem/Symptoms, Root Cause, Diagnostic, Immediate Fix, Permanent Fix, Prevention, Verification, Temenos Contact, Notes)
 - [x] **Role-Based Access Control (RBAC)** — 4 roles (Admin, Knowledge Manager, Contributor, Viewer)
 - [x] **JWT Authentication** — Secure session management with httpOnly cookies
 - [x] **User Management** — Admin can create, edit, delete users and change roles

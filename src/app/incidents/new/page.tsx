@@ -86,6 +86,16 @@ export default function NewIncidentPage() {
     severity: "Severity 3",
     requester: "",
     root_cause_category: "",
+    // Problem & Solution knowledge fields
+    problem_symptoms: "",
+    root_cause: "",
+    diagnostic_information: "",
+    immediate_fix: "",
+    permanent_fix: "",
+    prevention: "",
+    verification: "",
+    temenos_contact: "",
+    notes: "",
   });
   const [dynamicFields, setDynamicFields] = useState<Record<string, string>>({});
 
@@ -143,6 +153,16 @@ export default function NewIncidentPage() {
         group_id: parseInt(form.group_id),
         subgroup_id: form.subgroup_id ? parseInt(form.subgroup_id) : null,
         dynamic_fields: dynamicFields,
+        // Pass knowledge fields (empty strings become null)
+        problem_symptoms: form.problem_symptoms || null,
+        root_cause: form.root_cause || null,
+        diagnostic_information: form.diagnostic_information || null,
+        immediate_fix: form.immediate_fix || null,
+        permanent_fix: form.permanent_fix || null,
+        prevention: form.prevention || null,
+        verification: form.verification || null,
+        temenos_contact: form.temenos_contact || null,
+        notes: form.notes || null,
       };
 
       const res = await fetch("/api/incidents", {
@@ -446,6 +466,107 @@ export default function NewIncidentPage() {
             </div>
           </div>
         )}
+
+        {/* Section: Problem & Solution */}
+        <div className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Problem & Solution</h2>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Problem / Symptoms *</label>
+            <textarea
+              value={form.problem_symptoms}
+              onChange={(e) => setForm({ ...form, problem_symptoms: e.target.value })}
+              placeholder="Describe the problem, error messages, and observed symptoms..."
+              required
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Root Cause</label>
+            <textarea
+              value={form.root_cause}
+              onChange={(e) => setForm({ ...form, root_cause: e.target.value })}
+              placeholder="What caused the problem? Technical root cause analysis..."
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Diagnostic Information</label>
+            <textarea
+              value={form.diagnostic_information}
+              onChange={(e) => setForm({ ...form, diagnostic_information: e.target.value })}
+              placeholder="Commands, logs, or steps used to diagnose the issue..."
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Immediate Fix</label>
+            <textarea
+              value={form.immediate_fix}
+              onChange={(e) => setForm({ ...form, immediate_fix: e.target.value })}
+              placeholder="Quick fix applied to resolve the immediate problem..."
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Permanent Fix</label>
+            <textarea
+              value={form.permanent_fix}
+              onChange={(e) => setForm({ ...form, permanent_fix: e.target.value })}
+              placeholder="Permanent solution to prevent recurrence..."
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Prevention</label>
+            <textarea
+              value={form.prevention}
+              onChange={(e) => setForm({ ...form, prevention: e.target.value })}
+              placeholder="Steps taken to prevent this issue in the future..."
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Verification</label>
+            <textarea
+              value={form.verification}
+              onChange={(e) => setForm({ ...form, verification: e.target.value })}
+              placeholder="Steps to verify the fix is working correctly..."
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+          </div>
+        </div>
+
+        {/* Section: Additional Information */}
+        <div className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Additional Information</h2>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Temenos Contact</label>
+            <input
+              type="text"
+              value={form.temenos_contact}
+              onChange={(e) => setForm({ ...form, temenos_contact: e.target.value })}
+              placeholder="Temenos support engineer or contact..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <textarea
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              placeholder="Additional notes and context..."
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+          </div>
+        </div>
 
         {/* Section: Attachments */}
         <div className="bg-white rounded-lg border border-gray-200 p-5">

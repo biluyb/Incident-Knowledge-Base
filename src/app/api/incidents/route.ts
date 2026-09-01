@@ -98,6 +98,10 @@ export async function POST(request: NextRequest) {
     const {
       reference, summary, group_id, subgroup_id, priority, severity, status,
       root_cause_category, requester, dynamic_fields,
+      // Problem & Solution knowledge fields
+      problem_symptoms, root_cause, diagnostic_information,
+      immediate_fix, permanent_fix, prevention, verification,
+      temenos_contact, notes,
     } = body;
 
     // Validate required fields
@@ -129,14 +133,21 @@ export async function POST(request: NextRequest) {
     const result = await queryOne<{ id: number }>(`
       INSERT INTO tickets
         (reference, summary, group_id, subgroup_id, priority, severity, status,
-         root_cause_category, requester, custom_fields)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         root_cause_category, requester, custom_fields,
+         problem_symptoms, root_cause, diagnostic_information,
+         immediate_fix, permanent_fix, prevention, verification,
+         temenos_contact, notes)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+              $11, $12, $13, $14, $15, $16, $17, $18, $19)
       RETURNING id
     `, [
       reference.trim(), summary.trim(), group_id, subgroup_id || null,
       priority || null, severity || null, status || 'Permanently Closed',
       root_cause_category || null, requester || null,
       JSON.stringify(dynamic_fields || {}),
+      problem_symptoms || null, root_cause || null, diagnostic_information || null,
+      immediate_fix || null, permanent_fix || null, prevention || null,
+      verification || null, temenos_contact || null, notes || null,
     ]);
 
     if (!result) {

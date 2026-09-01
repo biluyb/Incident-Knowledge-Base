@@ -43,6 +43,16 @@ export interface Ticket {
   classification_note: string | null;
   legacy_group: string | null;
   custom_fields?: Record<string, string>;
+  // Problem & Solution knowledge fields
+  problem_symptoms: string | null;
+  root_cause: string | null;
+  diagnostic_information: string | null;
+  immediate_fix: string | null;
+  permanent_fix: string | null;
+  prevention: string | null;
+  verification: string | null;
+  temenos_contact: string | null;
+  notes: string | null;
   created_at: Date;
   updated_at: Date;
   // Joined fields

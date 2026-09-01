@@ -202,6 +202,10 @@ export async function PUT(
     const {
       reference, summary, group_id, subgroup_id, priority, severity,
       root_cause_category, requester, dynamic_fields,
+      // Problem & Solution knowledge fields
+      problem_symptoms, root_cause, diagnostic_information,
+      immediate_fix, permanent_fix, prevention, verification,
+      temenos_contact, notes,
     } = body;
 
     // Find the ticket by reference or ID
@@ -236,6 +240,8 @@ export async function PUT(
       }
     }
 
+    // Use COALESCE to preserve existing values when fields are not provided
+    // This prevents partial updates from accidentally clearing fields
     await queryOne(`
       UPDATE tickets SET
         reference = COALESCE($1, reference),
@@ -247,14 +253,34 @@ export async function PUT(
         root_cause_category = COALESCE($7, root_cause_category),
         requester = COALESCE($8, requester),
         custom_fields = COALESCE($9, custom_fields),
+        problem_symptoms = $10,
+        root_cause = $11,
+        diagnostic_information = $12,
+        immediate_fix = $13,
+        permanent_fix = $14,
+        prevention = $15,
+        verification = $16,
+        temenos_contact = $17,
+        notes = $18,
         updated_at = NOW()
-      WHERE id = $10
+      WHERE id = $19
     `, [
       reference || null, summary || null, group_id || null,
       subgroup_id !== undefined ? subgroup_id : null,
       priority || null, severity || null,
       root_cause_category || null, requester || null,
       dynamic_fields ? JSON.stringify(dynamic_fields) : null,
+      // Knowledge fields: use explicit undefined check to allow empty strings
+      // (empty string is a valid value — means user cleared the field)
+      problem_symptoms !== undefined ? problem_symptoms : null,
+      root_cause !== undefined ? root_cause : null,
+      diagnostic_information !== undefined ? diagnostic_information : null,
+      immediate_fix !== undefined ? immediate_fix : null,
+      permanent_fix !== undefined ? permanent_fix : null,
+      prevention !== undefined ? prevention : null,
+      verification !== undefined ? verification : null,
+      temenos_contact !== undefined ? temenos_contact : null,
+      notes !== undefined ? notes : null,
       ticketId,
     ]);
 
