@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -7,6 +8,9 @@ export const dynamic = 'force-dynamic';
 const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
 
 export async function GET(request: NextRequest) {
+  const auth = await requirePermission(request, 'file.view');
+  if (auth.error) return auth.error;
+
   const { searchParams } = new URL(request.url);
   const fileName = searchParams.get('file');
 

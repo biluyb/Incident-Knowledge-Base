@@ -10,12 +10,67 @@ The Tsehay Bank Incident Knowledge Base has undergone a comprehensive security a
 
 ### CRITICAL — Authentication & Authorization
 
-**Status: FIXED**
+**Status: FIXED (2026-09-01)**
 
-- **Finding**: No authentication system existed. All API endpoints were completely open.
-- **Risk**: Anyone could create, edit, delete incidents, knowledge articles, groups, subgroups, files, and comments.
+- **Original Finding**: No authentication system existed. All API endpoints were completely open.
 - **Fix**: Implemented JWT-based authentication with role-based access control (RBAC).
 - **Roles**: Admin, Knowledge Manager, Contributor, Viewer
+
+### CRITICAL — Middleware/Proxy File Conflict (BUILD FAILURE)
+
+**Status: FIXED (2026-09-01)**
+
+- **Finding**: The project uses Next.js 16 which requires `proxy.ts` (not `middleware.ts`). The RBAC commit added `src/middleware.ts` (old convention) while `src/proxy.ts` already existed (new convention). Next.js 16 detected both and refused to build.
+- **Impact**: Application could not build at all. Route-level protection was completely non-functional.
+- **Fix**: Deleted `src/middleware.ts`. The `src/proxy.ts` file now provides all route protection correctly.
+
+### CRITICAL — Middleware Not Connected (RBAC Root Cause)
+
+**Status: FIXED (2026-09-01)**
+
+- **Finding**: The file `src/proxy.ts` contained complete Next.js middleware logic (route protection, role checks, auth headers) but was never connected as actual middleware because it was named `proxy.ts` instead of `middleware.ts`. No `middleware.ts` file existed in the project.
+- **Impact**: ALL pages were publicly accessible (admin, user management, incident create/edit). All API routes had no middleware-level protection. The only protection was `requirePermission()` in individual API route handlers.
+- **Fix**: Created `src/middleware.ts` with proper Next.js middleware. Middleware now:
+  - Protects all non-public pages (redirects unauthenticated to login)
+  - Returns 401 for unauthenticated API requests
+  - Returns 403 for unauthorized role access
+  - Adds user info headers for downstream API handlers
+  - Redirects authenticated users away from login page
+
+### HIGH — Unprotected File Download/View APIs
+
+**Status: FIXED (2026-09-01)**
+
+- **Finding**: `GET /api/files/:id` and `GET /api/files/:id/download` had no authentication check. Any unauthenticated user could download files by guessing file IDs.
+- **Fix**: Added `requirePermission(request, 'file.view')` to both endpoints.
+
+### HIGH — Unprotected Comment Download API
+
+**Status: FIXED (2026-09-01)**
+
+- **Finding**: `GET /api/comments/download` had no authentication check.
+- **Fix**: Added `requirePermission(request, 'file.view')` to the endpoint.
+
+### HIGH — Unprotected Admin GET APIs
+
+**Status: FIXED (2026-09-01)**
+
+- **Finding**: `GET /api/admin/groups` and `GET /api/admin/subgroups` had no authentication check in their GET handlers.
+- **Fix**: Added `requirePermission(request, 'group.view')` and `requirePermission(request, 'subtype.view')` respectively.
+
+### MEDIUM — Comment Deletion Ownership Not Enforced
+
+**Status: FIXED (2026-09-01)**
+
+- **Finding**: Contributors could delete any comment, not just their own. The code had a TODO comment acknowledging missing ownership check.
+- **Fix**: Added ownership verification — contributors can only delete comments matching their username. Admin/knowledge_manager can delete any comment.
+
+### MEDIUM — Incorrect User Role Type Definition
+
+**Status: FIXED (2026-09-01)**
+
+- **Finding**: `types.ts` defined `User.role` as `'admin' | 'engineer' | 'viewer'` instead of the correct `'admin' | 'knowledge_manager' | 'contributor' | 'viewer'`.
+- **Fix**: Corrected the type definition to match the actual role model.
 
 ### HIGH — Hardcoded Credentials in README
 

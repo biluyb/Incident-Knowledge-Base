@@ -173,12 +173,22 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
     }
 
-    // Check permission: admin/km can delete any, contributor can delete own
+    // Check permission: admin/km can delete any, contributor can only delete own
     const { hasPermission } = await import('@/lib/permissions');
     const canDeleteAny = hasPermission(auth.user.role as any, 'comment.delete_any');
     if (!canDeleteAny) {
-      // For now, allow all authenticated users to delete (ownership check can be added later)
-      // In production, you'd check if the user is the comment author
+      // Contributors can only delete their own comments
+      // Check if the comment author matches the logged-in user name
+      const commentAuthor = await queryOne<{ author: string }>(
+        'SELECT author FROM kb_comments WHERE id = $1',
+        [parseInt(commentId)]
+      );
+      if (commentAuthor && commentAuthor.author !== auth.user.name) {
+        return NextResponse.json(
+          { error: 'You can only delete your own comments' },
+          { status: 403 }
+        );
+      }
     }
 
     // Delete file from disk if exists

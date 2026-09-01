@@ -114,7 +114,7 @@ export interface User {
   id: number;
   name: string;
   email: string;
-  role: 'admin' | 'engineer' | 'viewer';
+  role: 'admin' | 'knowledge_manager' | 'contributor' | 'viewer';
   status: string;
   created_at: Date;
   updated_at: Date;

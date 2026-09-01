@@ -5,6 +5,9 @@ import { requirePermission, auditLog, validateRequired } from '@/lib/api-auth';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  const auth = await requirePermission(request, 'subtype.view');
+  if (auth.error) return auth.error;
+
   const { searchParams } = new URL(request.url);
   const groupId = searchParams.get('group_id');
 

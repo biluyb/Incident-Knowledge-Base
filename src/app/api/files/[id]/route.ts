@@ -12,6 +12,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requirePermission(request, 'file.view');
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   try {
     const file = await queryOne(

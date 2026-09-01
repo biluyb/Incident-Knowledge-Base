@@ -4,7 +4,10 @@ import { requirePermission, auditLog, validateRequired } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requirePermission(request, 'group.view');
+  if (auth.error) return auth.error;
+
   try {
     const groups = await query(`
       SELECT g.*,

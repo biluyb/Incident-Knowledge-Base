@@ -74,6 +74,7 @@ src/
 │   ├── page.tsx                  # Home (search-focused)
 │   ├── layout.tsx                # Root layout + sidebar nav
 │   ├── globals.css               # Tailwind imports
+│   ├── proxy.ts                 # Request proxy (auth, RBAC, route protection) — Next.js 16 convention
 │   ├── search/page.tsx           # Search results page
 │   ├── incidents/page.tsx        # Incident list (paginated)
 │   ├── incidents/[id]/page.tsx   # Incident detail (with KB context)
@@ -211,6 +212,7 @@ Each group displays relevant fields on the incident creation/edit form:
 - [x] **User Management** — Admin can create, edit, delete users and change roles
 - [x] **Audit Logging** — All significant actions tracked in audit_log table
 - [x] **API Authorization** — All endpoints protected with permission checks
+- [x] **Route Protection** — proxy.ts protects all routes (Next.js 16 convention)
 - [x] Admin Group & Subgroup Management — CRUD via /admin page, modals for create/edit
 - [x] Incident file uploads — upload, view, download, delete via FileUpload component
 - [x] File upload on incident edit — FileUpload component integrated in edit form
@@ -462,9 +464,10 @@ Implemented:
 1. **Knowledge articles only for G02 and G03** — Other domains (G01, G04-G08) need content
 2. **No archiving/restore** — instruction §17 requires soft-delete capability
 3. **No Excel export** — only import exists
-4. **Build _global-error warning** — pre-existing Next.js prerender issue, not affecting functionality
+4. **Build _global-error warning** — pre-existing Next.js 16 prerender issue, not affecting functionality
 5. **No CSRF tokens** — Add for state-changing operations
 6. **No rate limiting** — Add to prevent abuse
+7. **Middleware/Proxy conflict fixed** — Deleted conflicting src/middleware.ts (old convention), src/proxy.ts is the correct Next.js 16 file
 
 ## 14. Important Design Decisions
 
