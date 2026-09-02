@@ -161,85 +161,63 @@ export default function IncidentDetailPage() {
           {/* Problem / Symptoms */}
           <div>
             <h3 className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-1">Problem / Symptoms</h3>
-            {ticket.problem_symptoms ? (
-              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{ticket.problem_symptoms}</p>
-            ) : (
-              <p className="text-sm text-gray-400 italic">Not provided</p>
-            )}
+            <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+              {ticket.problem_symptoms || ticket.summary}
+            </p>
           </div>
 
           {/* Root Cause */}
-          <div>
-            <h3 className="text-xs font-semibold text-orange-600 uppercase tracking-wide mb-1">Root Cause</h3>
-            {ticket.root_cause ? (
+          {ticket.root_cause && (
+            <div>
+              <h3 className="text-xs font-semibold text-orange-600 uppercase tracking-wide mb-1">Root Cause</h3>
               <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{ticket.root_cause}</p>
-            ) : (
-              <p className="text-sm text-gray-400 italic">Not provided</p>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Diagnostic Information */}
-          <div>
-            <h3 className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Diagnostic Information</h3>
-            {ticket.diagnostic_information ? (
+          {ticket.diagnostic_information && (
+            <div>
+              <h3 className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Diagnostic Information</h3>
               <div className="bg-gray-900 text-green-400 rounded-lg p-3 text-xs font-mono whitespace-pre-wrap overflow-x-auto">
                 {ticket.diagnostic_information}
               </div>
-            ) : (
-              <p className="text-sm text-gray-400 italic">Not provided</p>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Immediate Fix */}
-          <div>
-            <h3 className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">Immediate Fix</h3>
-            {ticket.immediate_fix ? (
+          {/* Solution / Fix */}
+          {(ticket.immediate_fix || ticket.permanent_fix) && (
+            <div>
+              <h3 className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">Solution / Fix</h3>
               <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{ticket.immediate_fix}</p>
+                <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+                  {ticket.immediate_fix || ticket.permanent_fix}
+                </p>
               </div>
-            ) : (
-              <p className="text-sm text-gray-400 italic">Not provided</p>
-            )}
-          </div>
-
-          {/* Permanent Fix */}
-          <div>
-            <h3 className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1">Permanent Fix</h3>
-            {ticket.permanent_fix ? (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{ticket.permanent_fix}</p>
-              </div>
-            ) : (
-              <p className="text-sm text-gray-400 italic">Not provided</p>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Prevention */}
-          <div>
-            <h3 className="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-1">Prevention</h3>
-            {ticket.prevention ? (
+          {ticket.prevention && (
+            <div>
+              <h3 className="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-1">Prevention</h3>
               <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{ticket.prevention}</p>
-            ) : (
-              <p className="text-sm text-gray-400 italic">Not provided</p>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Verification */}
-          <div>
-            <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Verification</h3>
-            {ticket.verification ? (
+          {ticket.verification && (
+            <div>
+              <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Verification</h3>
               <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
                 {ticket.verification.split("\n").filter(Boolean).map((line: string, i: number) => (
                   <label key={i} className="flex items-start gap-2 text-sm text-gray-800 py-0.5">
-                    <input type="checkbox" className="mt-1 rounded border-gray-300" />
-                    <span>{line.replace(/^[✓☐☐\-\*\d\.]+\s*/, "")}</span>
+                    <input type="checkbox" className="mt-1 rounded border-gray-300" defaultChecked readOnly />
+                    <span>{line.replace(/^[✓☐\-\*\d\.]+\s*/, "")}</span>
                   </label>
                 ))}
               </div>
-            ) : (
-              <p className="text-sm text-gray-400 italic">Not provided</p>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { FileUpload } from "@/components/ui/FileUpload";
 
 interface Group {
   id: number;
@@ -16,58 +15,6 @@ interface Subgroup {
   code: string;
   name: string;
 }
-
-const GROUP_FIELDS: Record<string, { key: string; label: string; type: string }[]> = {
-  "G01": [
-    { key: "cob_process", label: "COB Process", type: "text" },
-    { key: "batch_job", label: "Batch/Job Name", type: "text" },
-    { key: "service", label: "Affected Service", type: "text" },
-    { key: "t24_routine", label: "T24 Routine", type: "text" },
-    { key: "error_message", label: "Error Message", type: "textarea" },
-  ],
-  "G02": [
-    { key: "account_type", label: "Account Type", type: "text" },
-    { key: "product_code", label: "Product Code", type: "text" },
-    { key: "operation", label: "Operation", type: "text" },
-    { key: "error_block", label: "Error/Block", type: "text" },
-  ],
-  "G03": [
-    { key: "interest_type", label: "Interest Type", type: "text" },
-    { key: "product", label: "Product", type: "text" },
-    { key: "accounting_issue", label: "Accounting Issue", type: "text" },
-    { key: "t24_record", label: "T24 Record", type: "text" },
-  ],
-  "G04": [
-    { key: "payment_type", label: "Payment Type", type: "text" },
-    { key: "transaction_type", label: "Transaction Type", type: "text" },
-    { key: "currency", label: "Currency", type: "text" },
-    { key: "gl_account", label: "GL Account", type: "text" },
-    { key: "posting_issue", label: "Posting Issue", type: "text" },
-  ],
-  "G05": [
-    { key: "teller_vault", label: "Teller/Vault", type: "text" },
-    { key: "transaction_type", label: "Transaction Type", type: "text" },
-    { key: "branch", label: "Branch", type: "text" },
-    { key: "operation", label: "Operation", type: "text" },
-  ],
-  "G06": [
-    { key: "screening_type", label: "Screening Type", type: "text" },
-    { key: "fcm_module", label: "FCM Module", type: "text" },
-    { key: "aml_rule", label: "AML Rule", type: "text" },
-    { key: "screening_result", label: "Screening Result", type: "text" },
-  ],
-  "G07": [
-    { key: "limit_type", label: "Limit Type", type: "text" },
-    { key: "overdraft_type", label: "Overdraft Type", type: "text" },
-    { key: "restriction_type", label: "Restriction Type", type: "text" },
-  ],
-  "G08": [
-    { key: "platform_component", label: "Platform Component", type: "text" },
-    { key: "configuration", label: "Configuration", type: "text" },
-    { key: "service", label: "Service", type: "text" },
-    { key: "issue_type", label: "Issue Type", type: "text" },
-  ],
-};
 
 export default function NewIncidentPage() {
   const router = useRouter();
@@ -82,25 +29,13 @@ export default function NewIncidentPage() {
     summary: "",
     group_id: "",
     subgroup_id: "",
-    priority: "Medium",
-    severity: "Severity 3",
-    requester: "",
-    root_cause_category: "",
-    // Problem & Solution knowledge fields
-    problem_symptoms: "",
     root_cause: "",
-    diagnostic_information: "",
-    immediate_fix: "",
-    permanent_fix: "",
-    prevention: "",
+    solution: "",
     verification: "",
-    temenos_contact: "",
     notes: "",
   });
-  const [dynamicFields, setDynamicFields] = useState<Record<string, string>>({});
 
   // File upload state
-  const [newTicketId, setNewTicketId] = useState<number | null>(null);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   // Inline group/subgroup creation state
@@ -135,12 +70,7 @@ export default function NewIncidentPage() {
         setForm((f) => ({ ...f, subgroup_id: "" }));
       })
       .catch(console.error);
-
-    setDynamicFields({});
   }, [form.group_id, groups]);
-
-  const selectedGroupCode = groups.find((g) => String(g.id) === form.group_id)?.code || "";
-  const groupDynamicFields = GROUP_FIELDS[selectedGroupCode] || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,20 +79,18 @@ export default function NewIncidentPage() {
 
     try {
       const payload = {
-        ...form,
+        reference: form.reference.trim(),
+        summary: form.summary.trim(),
         group_id: parseInt(form.group_id),
         subgroup_id: form.subgroup_id ? parseInt(form.subgroup_id) : null,
-        dynamic_fields: dynamicFields,
-        // Pass knowledge fields (empty strings become null)
-        problem_symptoms: form.problem_symptoms || null,
+        problem_symptoms: form.summary.trim(),
         root_cause: form.root_cause || null,
-        diagnostic_information: form.diagnostic_information || null,
-        immediate_fix: form.immediate_fix || null,
-        permanent_fix: form.permanent_fix || null,
-        prevention: form.prevention || null,
+        immediate_fix: form.solution || null,
         verification: form.verification || null,
-        temenos_contact: form.temenos_contact || null,
         notes: form.notes || null,
+        priority: "Medium",
+        severity: "Severity 3",
+        status: "Permanently Closed",
       };
 
       const res = await fetch("/api/incidents", {
@@ -196,7 +124,6 @@ export default function NewIncidentPage() {
     }
   };
 
-  // Handle file selection (store for later upload after incident is created)
   const handleFileAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setPendingFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
@@ -293,8 +220,8 @@ export default function NewIncidentPage() {
       </div>
 
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Add Historical Incident</h1>
-        <p className="text-sm text-gray-500 mt-1">Document a previously solved technical incident.</p>
+        <h1 className="text-2xl font-bold text-gray-900">Add New Incident</h1>
+        <p className="text-sm text-gray-500 mt-1">Document a technical incident for future knowledge reference.</p>
       </div>
 
       {error && (
@@ -304,31 +231,32 @@ export default function NewIncidentPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Section: Incident Information */}
+        {/* Section: Incident Header Info */}
         <div className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Incident Information</h2>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Reference *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Incident Reference *</label>
             <input
               type="text"
               value={form.reference}
               onChange={(e) => setForm({ ...form, reference: e.target.value })}
               placeholder="TSR-XXXXXXXX"
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
             />
           </div>
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Title / Summary *</label>
             <input
               type="text"
               value={form.summary}
               onChange={(e) => setForm({ ...form, summary: e.target.value })}
               placeholder="Brief incident title"
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
             />
           </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Group *</label>
@@ -355,6 +283,7 @@ export default function NewIncidentPage() {
                 </button>
               </div>
             </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Subgroup</label>
               <div className="flex gap-2 items-center">
@@ -386,159 +315,39 @@ export default function NewIncidentPage() {
           </div>
         </div>
 
-        {/* Section: Classification */}
-        <div className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Classification</h2>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-              <select
-                value={form.priority}
-                onChange={(e) => setForm({ ...form, priority: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              >
-                <option value="Critical">Critical</option>
-                <option value="High">High</option>
-                <option value="Medium">Medium</option>
-                <option value="Low">Low</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Severity</label>
-              <select
-                value={form.severity}
-                onChange={(e) => setForm({ ...form, severity: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              >
-                <option value="Severity 1">Severity 1</option>
-                <option value="Severity 2">Severity 2</option>
-                <option value="Severity 3">Severity 3</option>
-                <option value="Severity 4">Severity 4</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Requester</label>
-              <input
-                type="text"
-                value={form.requester}
-                onChange={(e) => setForm({ ...form, requester: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Root Cause Category</label>
-            <input
-              type="text"
-              value={form.root_cause_category}
-              onChange={(e) => setForm({ ...form, root_cause_category: e.target.value })}
-              placeholder="e.g. Data Input Error, User Knowledge Gap"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
-          </div>
-        </div>
-
-        {/* Section: Group-Specific Fields */}
-        {groupDynamicFields.length > 0 && (
-          <div className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Technical Details</h2>
-            <div className="grid grid-cols-2 gap-4">
-              {groupDynamicFields.map((field) => (
-                <div key={field.key}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
-                  {field.type === "textarea" ? (
-                    <textarea
-                      value={dynamicFields[field.key] || ""}
-                      onChange={(e) => setDynamicFields({ ...dynamicFields, [field.key]: e.target.value })}
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    />
-                  ) : (
-                    <input
-                      type="text"
-                      value={dynamicFields[field.key] || ""}
-                      onChange={(e) => setDynamicFields({ ...dynamicFields, [field.key]: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Section: Problem & Solution */}
         <div className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Problem & Solution</h2>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Problem / Symptoms *</label>
-            <textarea
-              value={form.problem_symptoms}
-              onChange={(e) => setForm({ ...form, problem_symptoms: e.target.value })}
-              placeholder="Describe the problem, error messages, and observed symptoms..."
-              required
-              rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
-          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Root Cause</label>
             <textarea
               value={form.root_cause}
               onChange={(e) => setForm({ ...form, root_cause: e.target.value })}
-              placeholder="What caused the problem? Technical root cause analysis..."
+              placeholder="What caused the issue?"
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
             />
           </div>
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Diagnostic Information</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Solution / Fix</label>
             <textarea
-              value={form.diagnostic_information}
-              onChange={(e) => setForm({ ...form, diagnostic_information: e.target.value })}
-              placeholder="Commands, logs, or steps used to diagnose the issue..."
+              value={form.solution}
+              onChange={(e) => setForm({ ...form, solution: e.target.value })}
+              placeholder="What was done to resolve it?"
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Immediate Fix</label>
-            <textarea
-              value={form.immediate_fix}
-              onChange={(e) => setForm({ ...form, immediate_fix: e.target.value })}
-              placeholder="Quick fix applied to resolve the immediate problem..."
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Permanent Fix</label>
-            <textarea
-              value={form.permanent_fix}
-              onChange={(e) => setForm({ ...form, permanent_fix: e.target.value })}
-              placeholder="Permanent solution to prevent recurrence..."
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Prevention</label>
-            <textarea
-              value={form.prevention}
-              onChange={(e) => setForm({ ...form, prevention: e.target.value })}
-              placeholder="Steps taken to prevent this issue in the future..."
-              rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
-          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Verification</label>
             <textarea
               value={form.verification}
               onChange={(e) => setForm({ ...form, verification: e.target.value })}
-              placeholder="Steps to verify the fix is working correctly..."
+              placeholder="How was it confirmed that the issue was fixed?"
               rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
             />
           </div>
         </div>
@@ -547,23 +356,13 @@ export default function NewIncidentPage() {
         <div className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Additional Information</h2>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Temenos Contact</label>
-            <input
-              type="text"
-              value={form.temenos_contact}
-              onChange={(e) => setForm({ ...form, temenos_contact: e.target.value })}
-              placeholder="Temenos support engineer or contact..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
-          </div>
-          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
             <textarea
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              placeholder="Additional notes and context..."
+              placeholder="Additional useful information, warnings, or prevention tips..."
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
             />
           </div>
         </div>
@@ -571,10 +370,6 @@ export default function NewIncidentPage() {
         {/* Section: Attachments */}
         <div className="bg-white rounded-lg border border-gray-200 p-5">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Attachments</h2>
-          <p className="text-xs text-gray-400 mb-3">
-            Upload screenshots, error logs, configuration files, or other evidence. Files will be attached after the incident is created.
-          </p>
-          {/* Pending files */}
           {pendingFiles.length > 0 && (
             <div className="space-y-1 mb-3">
               {pendingFiles.map((file, idx) => (
@@ -598,7 +393,7 @@ export default function NewIncidentPage() {
           <label className="block border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-gray-400 transition-colors border-gray-300">
             <input type="file" className="hidden" multiple onChange={handleFileAdd} />
             <p className="text-sm text-gray-500">
-              Drag & drop or <span className="font-medium" style={{ color: "var(--primary)" }}>click to add files</span>
+              Drag & drop or <span className="font-medium" style={{ color: "var(--primary)" }}>click to upload file</span>
             </p>
             <p className="text-xs text-gray-400 mt-1">PNG, JPG, PDF, TXT, CSV, DOC, XLS, ZIP, LOG — Max 10MB each</p>
           </label>
@@ -606,6 +401,9 @@ export default function NewIncidentPage() {
 
         {/* Actions */}
         <div className="flex items-center gap-3">
+          <Link href="/incidents" className="btn-secondary">
+            Cancel
+          </Link>
           <button
             type="submit"
             disabled={submitting}
@@ -613,9 +411,6 @@ export default function NewIncidentPage() {
           >
             {submitting ? "Saving..." : "Save Incident"}
           </button>
-          <Link href="/incidents" className="btn-secondary">
-            Cancel
-          </Link>
         </div>
       </form>
 
