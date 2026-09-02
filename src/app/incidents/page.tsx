@@ -147,6 +147,7 @@ export default function IncidentsPage() {
                   <tr className="border-b border-gray-200 bg-gray-50">
                     <th className="text-left px-4 py-2 font-medium text-gray-600 text-xs uppercase tracking-wider">Reference</th>
                     <th className="text-left px-4 py-2 font-medium text-gray-600 text-xs uppercase tracking-wider">Incident</th>
+                    <th className="text-left px-4 py-2 font-medium text-gray-600 text-xs uppercase tracking-wider">Knowledge</th>
                     <th className="text-left px-4 py-2 font-medium text-gray-600 text-xs uppercase tracking-wider">Group</th>
                     <th className="text-left px-4 py-2 font-medium text-gray-600 text-xs uppercase tracking-wider">Subgroup</th>
                     <th className="text-left px-4 py-2 font-medium text-gray-600 text-xs uppercase tracking-wider">Date</th>
@@ -156,11 +157,35 @@ export default function IncidentsPage() {
                   {tickets.map((ticket) => (
                     <tr key={ticket.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-2">
-                        <Link href={`/incidents/${ticket.id}`} className="font-mono text-xs font-medium hover:underline" style={{ color: "var(--primary)" }}>
-                          {ticket.reference}
-                        </Link>
+                        <div className="flex flex-col gap-0.5">
+                          <Link href={`/incidents/${ticket.id}`} className="font-mono text-xs font-semibold hover:underline" style={{ color: "var(--primary)" }}>
+                            {ticket.reference}
+                          </Link>
+                          {ticket.match_reason_label && (
+                            <span className="text-[10px] text-blue-600 font-semibold">
+                              {ticket.match_reason_label}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-2 text-gray-700 max-w-xs truncate">{ticket.summary}</td>
+                      <td className="px-4 py-2 whitespace-nowrap">
+                        {ticket.knowledge_completeness === "full" && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            ✓ Knowledge Available
+                          </span>
+                        )}
+                        {ticket.knowledge_completeness === "partial" && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                            ◐ Partial Knowledge
+                          </span>
+                        )}
+                        {ticket.knowledge_completeness === "none" && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-500 border border-gray-200">
+                            ○ No Details
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-2">
                         {ticket.group_code && (
                           <Link href={`/groups/${ticket.group_code}`} className="text-xs font-medium hover:underline" style={{ color: "var(--primary)" }}>

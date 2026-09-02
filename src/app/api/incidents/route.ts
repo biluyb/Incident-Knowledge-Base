@@ -28,8 +28,19 @@ export async function GET(request: NextRequest) {
       params.push(group);
     }
     if (search && search.trim()) {
-      conditions.push(`(t.reference ILIKE $${paramIdx} OR t.summary ILIKE $${paramIdx})`);
-      params.push(`%${search.trim()}%`);
+      const q = search.trim();
+      conditions.push(`(
+        t.reference ILIKE $${paramIdx}
+        OR t.summary ILIKE $${paramIdx}
+        OR t.root_cause ILIKE $${paramIdx}
+        OR t.immediate_fix ILIKE $${paramIdx}
+        OR t.permanent_fix ILIKE $${paramIdx}
+        OR t.problem_symptoms ILIKE $${paramIdx}
+        OR t.verification ILIKE $${paramIdx}
+        OR t.notes ILIKE $${paramIdx}
+        OR t.root_cause_category ILIKE $${paramIdx}
+      )`);
+      params.push(`%${q}%`);
       paramIdx++;
     }
     if (subgroup) {
@@ -53,29 +64,82 @@ export async function GET(request: NextRequest) {
 
     // Validate sort column
     const validSorts = ['created_at_ticket', 'reference', 'priority', 'severity', 'updated_at'];
-    const sortCol = validSorts.includes(sort) ? `t.${sort}` : 't.created_at_ticket';
-    const sortOrder = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    let sortClause = 'ORDER BY t.created_at_ticket DESC NULLS LAST';
+    if (search && search.trim() && (!searchParams.get('sort') || searchParams.get('sort') === 'relevance')) {
+      // Knowledge completeness weighted relevance order
+      sortClause = `ORDER BY (
+        CASE
+          WHEN UPPER(t.reference) = UPPER('${search.trim().replace(/'/g, "''")}') THEN 1000
+          WHEN UPPER(t.reference) LIKE '%${search.trim().toUpperCase().replace(/'/g, "''")}%' THEN 800
+          WHEN LOWER(t.summary) ILIKE '%${search.trim().toLowerCase().replace(/'/g, "''")}%' THEN 600
+          WHEN LOWER(t.immediate_fix) ILIKE '%${search.trim().toLowerCase().replace(/'/g, "''")}%' OR LOWER(t.permanent_fix) ILIKE '%${search.trim().toLowerCase().replace(/'/g, "''")}%' THEN 500
+          WHEN LOWER(t.root_cause) ILIKE '%${search.trim().toLowerCase().replace(/'/g, "''")}%' THEN 400
+          ELSE 200
+        END *
+        CASE
+          WHEN (t.immediate_fix IS NOT NULL OR t.permanent_fix IS NOT NULL) AND (t.problem_symptoms IS NOT NULL OR t.root_cause IS NOT NULL OR t.verification IS NOT NULL) THEN 1.4
+          WHEN (t.immediate_fix IS NOT NULL OR t.permanent_fix IS NOT NULL OR t.root_cause IS NOT NULL OR t.problem_symptoms IS NOT NULL) THEN 1.15
+          ELSE 1.0
+        END
+      ) DESC, t.created_at_ticket DESC`;
+    } else if (validSorts.includes(sort)) {
+      const sortOrder = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+      sortClause = `ORDER BY t.${sort} ${sortOrder} NULLS LAST`;
+    }
 
     const countResult = await queryOne<{ count: string }>(
       `SELECT COUNT(*)::text as count FROM tickets t LEFT JOIN groups g ON t.group_id = g.id ${where}`,
       params
     );
 
-    const tickets = await query(
+    const ticketsRaw = await query<any>(
       `SELECT t.id, t.reference, t.summary, t.status, t.requester, t.created_at_ticket,
               t.resolved_at, t.permanently_closed_at, t.root_cause_category,
               t.priority, t.severity, t.group_id, t.subgroup_id,
-              t.classification_confidence, t.legacy_group, t.custom_fields,
+              t.problem_symptoms, t.root_cause, t.immediate_fix, t.permanent_fix,
+              t.verification, t.notes,
               g.code as group_code, g.name as group_name,
               s.name as subgroup_name, s.code as subgroup_code
        FROM tickets t
        LEFT JOIN groups g ON t.group_id = g.id
        LEFT JOIN subtypes s ON t.subgroup_id = s.id
        ${where}
-       ORDER BY ${sortCol} ${sortOrder} NULLS LAST
+       ${sortClause}
        LIMIT $${paramIdx++} OFFSET $${paramIdx++}`,
       [...params, limit, offset]
     );
+
+    const tickets = ticketsRaw.map((t) => {
+      const hasProblem = Boolean(t.problem_symptoms && t.problem_symptoms.trim().length > 2);
+      const hasRootCause = Boolean(t.root_cause && t.root_cause.trim().length > 2);
+      const hasSolution = Boolean((t.immediate_fix && t.immediate_fix.trim().length > 2) || (t.permanent_fix && t.permanent_fix.trim().length > 2));
+      const hasVerification = Boolean(t.verification && t.verification.trim().length > 2);
+      const hasNotes = Boolean(t.notes && t.notes.trim().length > 2);
+
+      let completeness: 'full' | 'partial' | 'none' = 'none';
+      if (hasSolution && (hasProblem || hasRootCause || hasVerification)) {
+        completeness = 'full';
+      } else if (hasSolution || hasRootCause || hasProblem || hasVerification || hasNotes) {
+        completeness = 'partial';
+      }
+
+      let matchReasonLabel: string | undefined;
+      if (search && search.trim()) {
+        const qLower = search.trim().toLowerCase();
+        if (t.reference.toLowerCase() === qLower) matchReasonLabel = '✓ Exact Match';
+        else if (t.summary && t.summary.toLowerCase().includes(qLower)) matchReasonLabel = '↗ Title Match';
+        else if ((t.immediate_fix && t.immediate_fix.toLowerCase().includes(qLower)) || (t.permanent_fix && t.permanent_fix.toLowerCase().includes(qLower))) matchReasonLabel = '↗ Related Solution';
+        else if (t.root_cause && t.root_cause.toLowerCase().includes(qLower)) matchReasonLabel = '↗ Related Root Cause';
+        else if (t.problem_symptoms && t.problem_symptoms.toLowerCase().includes(qLower)) matchReasonLabel = '↗ Related Problem';
+        else matchReasonLabel = '↗ Related Knowledge';
+      }
+
+      return {
+        ...t,
+        knowledge_completeness: completeness,
+        match_reason_label: matchReasonLabel,
+      };
+    });
 
     return NextResponse.json({
       tickets,

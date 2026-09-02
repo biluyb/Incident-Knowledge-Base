@@ -153,9 +153,35 @@ export interface SearchResult {
   group_code?: string;
   group_name?: string;
   subtype_code?: string;
+  subgroup_name?: string;
   severity?: string;
   priority?: string;
   score: number;
+  knowledge_completeness?: 'full' | 'partial' | 'none';
+  match_reason?:
+    | 'EXACT_REFERENCE'
+    | 'EXACT_TITLE'
+    | 'TITLE_MATCH'
+    | 'PROBLEM_MATCH'
+    | 'ROOT_CAUSE_MATCH'
+    | 'SOLUTION_MATCH'
+    | 'VERIFICATION_MATCH'
+    | 'NOTES_MATCH'
+    | 'GROUP_MATCH'
+    | 'SUBGROUP_MATCH'
+    | 'RELATED_KNOWLEDGE';
+  match_reason_label?: string;
+  snippet?: {
+    field?: string;
+    text?: string;
+  };
+  created_at_ticket?: string | null;
+  problem_symptoms?: string | null;
+  root_cause?: string | null;
+  immediate_fix?: string | null;
+  permanent_fix?: string | null;
+  verification?: string | null;
+  notes?: string | null;
   highlights?: Record<string, string>;
 }
 

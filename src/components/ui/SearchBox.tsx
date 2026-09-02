@@ -154,22 +154,36 @@ export function SearchBox({
           )}
           {!loading && inlineResults.length > 0 && (
             <>
-              {inlineResults.map((r, idx) => (
+              {inlineResults.map((r: any, idx: number) => (
                 <Link
                   key={`${r.type}-${r.id}-${idx}`}
                   href={r.type === "ticket" ? `/incidents/${r.id}` : `/knowledge/${r.id}`}
                   onClick={handleResultClick}
                   className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
                 >
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border mt-0.5 flex-shrink-0 ${
-                    r.type === "knowledge"
-                      ? "bg-green-50 text-green-700 border-green-200"
-                      : "bg-gray-100 text-gray-600 border-gray-200"
-                  }`}>
-                    {r.type === "knowledge" ? "KB" : "Inc"}
-                  </span>
+                  <div className="flex flex-col gap-1 items-start flex-shrink-0 mt-0.5">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+                      r.type === "knowledge"
+                        ? "bg-green-50 text-green-700 border-green-200"
+                        : "bg-gray-100 text-gray-600 border-gray-200"
+                    }`}>
+                      {r.type === "knowledge" ? "KB" : "Inc"}
+                    </span>
+                    {r.knowledge_completeness === "full" && (
+                      <span className="text-[10px] text-emerald-700 font-medium bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-full">
+                        ✓ Knowledge
+                      </span>
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{r.title}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-gray-900 truncate">{r.title}</p>
+                      {r.match_reason_label && (
+                        <span className="text-[10px] text-blue-600 font-medium bg-blue-50 px-1.5 py-0.5 rounded">
+                          {r.match_reason_label}
+                        </span>
+                      )}
+                    </div>
                     {r.summary && (
                       <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{r.summary}</p>
                     )}
