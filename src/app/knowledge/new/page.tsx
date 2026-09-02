@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 interface Group {
@@ -19,11 +19,14 @@ interface Subtype {
 
 export default function AddKnowledgePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromIncidentId = searchParams.get("from_incident");
   const [groups, setGroups] = useState<Group[]>([]);
   const [subtypes, setSubtypes] = useState<Subtype[]>([]);
   const [filteredSubtypes, setFilteredSubtypes] = useState<Subtype[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [loadingIncident, setLoadingIncident] = useState(!!fromIncidentId);
 
   const [form, setForm] = useState({
     title: "",
@@ -42,11 +45,40 @@ export default function AddKnowledgePage() {
   });
 
   useEffect(() => {
-    fetch("/api/groups")
-      .then((r) => r.json())
-      .then(setGroups)
-      .catch(console.error);
-  }, []);
+    Promise.all([
+      fetch("/api/groups").then((r) => r.json()),
+      // If from_incident is set, also fetch the incident data
+      fromIncidentId
+        ? fetch(`/api/incidents/${fromIncidentId}`).then((r) => r.json())
+        : Promise.resolve(null),
+    ])
+      .then(([groupsData, incidentData]) => {
+        setGroups(groupsData);
+        if (incidentData && !incidentData.error) {
+          // Pre-fill form from incident data
+          const matchedGroup = groupsData.find(
+            (g: Group) => g.code === incidentData.group_code || g.id === incidentData.group_id
+          );
+          setForm({
+            title: incidentData.summary || "",
+            reference: incidentData.reference || "",
+            group_id: matchedGroup ? String(matchedGroup.id) : "",
+            subtype_id: incidentData.subgroup_id ? String(incidentData.subgroup_id) : "",
+            symptoms: incidentData.problem_symptoms || "",
+            root_cause: incidentData.root_cause || "",
+            diagnostic_data: incidentData.diagnostic_information || "",
+            immediate_fix: incidentData.immediate_fix || "",
+            permanent_fix: incidentData.permanent_fix || "",
+            prevention: incidentData.prevention || "",
+            verification: incidentData.verification || "",
+            temenos_contact: incidentData.temenos_contact || "",
+            notes: incidentData.notes || "",
+          });
+        }
+      })
+      .catch(console.error)
+      .finally(() => setLoadingIncident(false));
+  }, [fromIncidentId]);
 
   useEffect(() => {
     if (!form.group_id) {
@@ -97,9 +129,15 @@ export default function AddKnowledgePage() {
           ← Knowledge Articles
         </Link>
         <h1 className="text-2xl font-bold text-gray-900">Add Historical Incident</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Record a newly solved incident into the knowledge archive
-        </p>
+        {fromIncidentId ? (
+          <p className="text-sm text-gray-500 mt-1">
+            Creating knowledge article from incident {form.reference || fromIncidentId}. Fields are pre-filled — review and edit before saving.
+          </p>
+        ) : (
+          <p className="text-sm text-gray-500 mt-1">
+            Record a newly solved incident into the knowledge archive
+          </p>
+        )}
       </div>
 
       {error && (

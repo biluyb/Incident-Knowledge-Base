@@ -119,16 +119,17 @@ export default function IncidentDetailPage() {
             )}
           </div>
         </div>
-        <div className="flex gap-2 flex-shrink-0">
+        <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
           <Link href={`/incidents/${ticket.id}/edit`} className="btn-secondary text-xs">
             Edit Incident
           </Link>
           {ticket.group_code && (
             <Link
-              href={`/knowledge/new?group=${ticket.group_code}${ticket.subgroup_id ? `&subtype=${ticket.subgroup_id}` : ''}`}
+              href={`/knowledge/new?from_incident=${ticket.id}`}
               className="btn-primary text-xs"
+              title="Create a knowledge article pre-filled from this incident's Problem & Solution fields"
             >
-              + Add Knowledge
+              → Create KB Article
             </Link>
           )}
         </div>
