@@ -36,6 +36,20 @@ export default function IncidentDetailPage() {
     }).catch(console.error);
   }, [id]);
 
+  const formatDate = (dateStr?: string | null) => {
+    if (!dateStr) return "—";
+    if (typeof dateStr === "string" && dateStr.includes("T")) {
+      return dateStr.split("T")[0];
+    }
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toISOString().split("T")[0];
+    } catch {
+      return dateStr;
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-4 max-w-4xl">
@@ -323,19 +337,19 @@ export default function IncidentDetailPage() {
           {ticket.created_at_ticket && (
             <div>
               <p className="text-xs text-gray-400 mb-0.5">Created</p>
-              <p className="text-sm text-gray-800 font-medium">{ticket.created_at_ticket}</p>
+              <p className="text-sm text-gray-800 font-medium">{formatDate(ticket.created_at_ticket)}</p>
             </div>
           )}
           {ticket.resolved_at && (
             <div>
               <p className="text-xs text-gray-400 mb-0.5">Resolved</p>
-              <p className="text-sm text-gray-800 font-medium">{ticket.resolved_at}</p>
+              <p className="text-sm text-gray-800 font-medium">{formatDate(ticket.resolved_at)}</p>
             </div>
           )}
           {ticket.permanently_closed_at && (
             <div>
               <p className="text-xs text-gray-400 mb-0.5">Permanently Closed</p>
-              <p className="text-sm text-gray-800 font-medium">{ticket.permanently_closed_at}</p>
+              <p className="text-sm text-gray-800 font-medium">{formatDate(ticket.permanently_closed_at)}</p>
             </div>
           )}
           {ticket.root_cause_category && (

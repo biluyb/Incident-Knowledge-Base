@@ -25,6 +25,20 @@ export default function GroupDetailPage() {
   const [totalTickets, setTotalTickets] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
+  const formatDate = (dateStr?: string | null) => {
+    if (!dateStr) return "—";
+    if (typeof dateStr === "string" && dateStr.includes("T")) {
+      return dateStr.split("T")[0];
+    }
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toISOString().split("T")[0];
+    } catch {
+      return dateStr;
+    }
+  };
+
   useEffect(() => {
     if (!code) return;
     fetch(`/api/groups/${code}`)
@@ -243,7 +257,7 @@ export default function GroupDetailPage() {
                         </td>
                         <td className="px-4 py-2 text-gray-700 max-w-xs truncate">{ticket.summary}</td>
                         <td className="px-4 py-2 text-xs text-gray-500 truncate max-w-[180px]">{ticket.subgroup_name || "—"}</td>
-                        <td className="px-4 py-2 text-gray-400 text-xs whitespace-nowrap">{ticket.created_at_ticket}</td>
+                        <td className="px-4 py-2 text-gray-400 text-xs whitespace-nowrap">{formatDate(ticket.created_at_ticket)}</td>
                       </tr>
                     ))}
                   </tbody>

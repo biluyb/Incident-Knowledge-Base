@@ -49,16 +49,15 @@ export default function IncidentsPage() {
       .finally(() => setLoading(false));
   }, [page, group, search, sortField, sortOrder]);
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = (dateStr?: string | null) => {
     if (!dateStr) return "—";
+    if (typeof dateStr === "string" && dateStr.includes("T")) {
+      return dateStr.split("T")[0];
+    }
     try {
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return dateStr;
-      return d.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
+      return d.toISOString().split("T")[0];
     } catch {
       return dateStr;
     }
