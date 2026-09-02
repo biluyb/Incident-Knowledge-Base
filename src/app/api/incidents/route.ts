@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { requirePermission, auditLog, validateRequired, validateString } from '@/lib/api-auth';
+import { getKnowledgeCategory } from '@/lib/search';
 
 export const dynamic = 'force-dynamic';
 
@@ -110,17 +111,12 @@ export async function GET(request: NextRequest) {
     );
 
     const tickets = ticketsRaw.map((t) => {
-      const hasProblem = Boolean(t.problem_symptoms && t.problem_symptoms.trim().length > 2);
-      const hasRootCause = Boolean(t.root_cause && t.root_cause.trim().length > 2);
-      const hasSolution = Boolean((t.immediate_fix && t.immediate_fix.trim().length > 2) || (t.permanent_fix && t.permanent_fix.trim().length > 2));
-      const hasVerification = Boolean(t.verification && t.verification.trim().length > 2);
-      const hasNotes = Boolean(t.notes && t.notes.trim().length > 2);
+      const { category, completeness, hasProblem, hasRootCause, hasSolution, hasVerification, hasNotes } = getKnowledgeCategory(t);
 
-      let completeness: 'full' | 'partial' | 'none' = 'none';
-      if (hasSolution && (hasProblem || hasRootCause || hasVerification)) {
-        completeness = 'full';
-      } else if (hasSolution || hasRootCause || hasProblem || hasVerification || hasNotes) {
-        completeness = 'partial';
+      let solutionPreview: string | null = null;
+      if (hasSolution) {
+        const solRaw = (t.immediate_fix || t.permanent_fix || '').replace(/<[^>]*>/g, '').trim();
+        solutionPreview = solRaw.length > 150 ? solRaw.substring(0, 147) + '...' : solRaw;
       }
 
       let matchReasonLabel: string | undefined;
@@ -137,6 +133,13 @@ export async function GET(request: NextRequest) {
       return {
         ...t,
         knowledge_completeness: completeness,
+        knowledge_category: category,
+        has_problem: hasProblem,
+        has_root_cause: hasRootCause,
+        has_solution: hasSolution,
+        has_verification: hasVerification,
+        has_notes: hasNotes,
+        solution_preview: solutionPreview,
         match_reason_label: matchReasonLabel,
       };
     });

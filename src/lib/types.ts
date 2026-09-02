@@ -158,6 +158,13 @@ export interface SearchResult {
   priority?: string;
   score: number;
   knowledge_completeness?: 'full' | 'partial' | 'none';
+  knowledge_category?: 'KNOWLEDGE_AVAILABLE' | 'PARTIAL_KNOWLEDGE' | 'PROBLEM_ONLY' | 'NO_DETAILS';
+  has_problem?: boolean;
+  has_root_cause?: boolean;
+  has_solution?: boolean;
+  has_verification?: boolean;
+  has_notes?: boolean;
+  solution_preview?: string | null;
   match_reason?:
     | 'EXACT_REFERENCE'
     | 'EXACT_TITLE'

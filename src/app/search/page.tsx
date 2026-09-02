@@ -96,88 +96,116 @@ function SearchContent() {
         <>
           <p className="text-sm text-gray-500">{total} result{total !== 1 ? "s" : ""} found</p>
           <div className="space-y-3">
-            {results.map((r, idx) => (
-              <div
-                key={`${r.type}-${r.id}-${idx}`}
-                className="bg-white rounded-lg border border-gray-200 p-4 hover:border-gray-300 transition-colors space-y-2"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
-                        r.type === "knowledge" ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-100 text-gray-600 border-gray-200"
-                      }`}>
-                        {r.type === "knowledge" ? "Knowledge Article" : "Incident"}
-                      </span>
+            {results.map((r, idx) => {
+              const category = r.knowledge_category || (r.knowledge_completeness === 'full' ? 'KNOWLEDGE_AVAILABLE' : r.knowledge_completeness === 'partial' ? 'PARTIAL_KNOWLEDGE' : 'NO_DETAILS');
+              const borderClass =
+                category === 'KNOWLEDGE_AVAILABLE' ? 'border-l-4 border-l-[#215b30]' :
+                category === 'PARTIAL_KNOWLEDGE' ? 'border-l-4 border-l-amber-500' :
+                category === 'PROBLEM_ONLY' ? 'border-l-4 border-l-slate-300' :
+                'border-l border-l-gray-200';
 
-                      {/* Knowledge Completeness Indicator */}
-                      {r.knowledge_completeness === "full" && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          ✓ Knowledge Available
+              return (
+                <div
+                  key={`${r.type}-${r.id}-${idx}`}
+                  className={`bg-white rounded-lg border border-gray-200 p-4 hover:shadow-sm transition-all ${borderClass}`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
+                          r.type === "knowledge" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-gray-100 text-gray-600 border-gray-200"
+                        }`}>
+                          {r.type === "knowledge" ? "Knowledge Article" : "Incident"}
                         </span>
-                      )}
-                      {r.knowledge_completeness === "partial" && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
-                          ◐ Partial Knowledge
-                        </span>
-                      )}
-                      {r.knowledge_completeness === "none" && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200">
-                          ○ No Details
-                        </span>
-                      )}
 
-                      {/* Match Reason Tag */}
-                      {r.match_reason_label && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
-                          {r.match_reason_label}
-                        </span>
-                      )}
+                        {/* Knowledge Category Indicator Badges */}
+                        {category === "KNOWLEDGE_AVAILABLE" && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            ✓ Knowledge Available
+                          </span>
+                        )}
+                        {category === "PARTIAL_KNOWLEDGE" && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                            ◐ Partial Knowledge
+                          </span>
+                        )}
+                        {category === "PROBLEM_ONLY" && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                            Problem Only
+                          </span>
+                        )}
 
-                      {r.group_code && (
-                        <span className="text-xs text-gray-500">{r.group_name || r.group_code}</span>
-                      )}
-                      {r.subtype_code && (
-                        <span className="text-xs text-gray-400">· {r.subtype_code}</span>
+                        {/* Match Reason Tag */}
+                        {r.match_reason_label && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                            {r.match_reason_label}
+                          </span>
+                        )}
+
+                        {r.group_code && (
+                          <span className="text-xs text-gray-500 font-medium">{r.group_name || r.group_code}</span>
+                        )}
+                        {r.subtype_code && (
+                          <span className="text-xs text-gray-400">· {r.subtype_code}</span>
+                        )}
+                      </div>
+
+                      <h3 className="text-sm font-semibold text-gray-900 mt-1">
+                        {r.type === "ticket" ? (
+                          <Link href={`/incidents/${r.id}`} className="hover:underline font-mono" style={{ color: "var(--primary)" }}>
+                            {r.title}
+                          </Link>
+                        ) : (
+                          <Link href={`/knowledge/${r.id}`} className="hover:underline" style={{ color: "var(--primary)" }}>
+                            {r.title}
+                          </Link>
+                        )}
+                      </h3>
+
+                      {r.summary && (
+                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">{r.summary}</p>
                       )}
                     </div>
-                    <h3 className="text-sm font-medium text-gray-900 mt-1">
-                      {r.type === "ticket" ? (
-                        <Link href={`/incidents/${r.id}`} className="hover:underline font-semibold" style={{ color: "var(--primary)" }}>
-                          {r.title}
+
+                    <div className="flex-shrink-0">
+                      {r.type === "knowledge" ? (
+                        <Link href={`/knowledge/${r.id}`} className="btn-primary text-xs">
+                          View Article →
                         </Link>
                       ) : (
-                        <Link href={`/knowledge/${r.id}`} className="hover:underline font-semibold" style={{ color: "var(--primary)" }}>
-                          {r.title}
+                        <Link href={`/incidents/${r.id}`} className="btn-secondary text-xs">
+                          View Incident →
                         </Link>
                       )}
-                    </h3>
-                    {r.summary && (
-                      <p className="text-xs text-gray-600 mt-1">{r.summary}</p>
-                    )}
+                    </div>
                   </div>
-                  <div className="flex-shrink-0">
-                    {r.type === "knowledge" ? (
-                      <Link href={`/knowledge/${r.id}`} className="btn-primary text-xs">
-                        View Article
-                      </Link>
-                    ) : (
-                      <Link href={`/incidents/${r.id}`} className="btn-secondary text-xs">
-                        View Incident
-                      </Link>
-                    )}
-                  </div>
-                </div>
 
-                {/* Short Snippet Preview */}
-                {r.snippet && r.snippet.text && (
-                  <div className="bg-gray-50 rounded border border-gray-100 p-2 text-xs text-gray-700">
-                    <span className="font-semibold text-gray-500">{r.snippet.field || "Match"}: </span>
-                    <span>{r.snippet.text}</span>
+                  {/* Compact Knowledge Field Indicators */}
+                  <div className="flex flex-wrap items-center gap-4 text-xs mt-3 pt-2.5 border-t border-gray-100 text-gray-500">
+                    <span className="flex items-center gap-1 font-medium">
+                      Problem {r.has_problem || r.summary ? <span className="text-emerald-600 font-bold">✓</span> : <span className="text-gray-300">—</span>}
+                    </span>
+                    <span className="flex items-center gap-1 font-medium">
+                      Root Cause {r.has_root_cause ? <span className="text-emerald-600 font-bold">✓</span> : <span className="text-gray-300">—</span>}
+                    </span>
+                    <span className="flex items-center gap-1 font-medium">
+                      Solution {r.has_solution ? <span className="text-emerald-600 font-bold">✓</span> : <span className="text-gray-300">—</span>}
+                    </span>
+                    <span className="flex items-center gap-1 font-medium">
+                      Verification {r.has_verification ? <span className="text-emerald-600 font-bold">✓</span> : <span className="text-gray-300">—</span>}
+                    </span>
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {/* Short Solution Preview */}
+                  {r.solution_preview && (
+                    <div className="bg-emerald-50/60 rounded-lg border border-emerald-100 p-2.5 text-xs text-gray-800 mt-2">
+                      <span className="font-semibold text-emerald-900">Solution / Fix: </span>
+                      <span>{r.solution_preview}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </>
       ) : null}

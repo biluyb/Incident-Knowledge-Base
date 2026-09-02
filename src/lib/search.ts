@@ -16,33 +16,65 @@ export function hasMeaningfulContent(text: string | null | undefined): boolean {
   return !placeholders.includes(lower);
 }
 
+export type KnowledgeCategory = 'KNOWLEDGE_AVAILABLE' | 'PARTIAL_KNOWLEDGE' | 'PROBLEM_ONLY' | 'NO_DETAILS';
+
 /**
- * Determine knowledge completeness level for an incident or article.
+ * Determine knowledge completeness category and field availability flags for an incident or article.
  */
-export function getKnowledgeCompleteness(item: {
+export function getKnowledgeCategory(item: {
   problem_symptoms?: string | null;
   root_cause?: string | null;
   immediate_fix?: string | null;
   permanent_fix?: string | null;
   verification?: string | null;
   notes?: string | null;
-}): 'full' | 'partial' | 'none' {
+}): {
+  category: KnowledgeCategory;
+  completeness: 'full' | 'partial' | 'none';
+  hasProblem: boolean;
+  hasRootCause: boolean;
+  hasSolution: boolean;
+  hasVerification: boolean;
+  hasNotes: boolean;
+} {
   const hasProblem = hasMeaningfulContent(item.problem_symptoms);
   const hasRootCause = hasMeaningfulContent(item.root_cause);
   const hasSolution = hasMeaningfulContent(item.immediate_fix) || hasMeaningfulContent(item.permanent_fix);
   const hasVerification = hasMeaningfulContent(item.verification);
   const hasNotes = hasMeaningfulContent(item.notes);
 
+  let category: KnowledgeCategory = 'NO_DETAILS';
+  let completeness: 'full' | 'partial' | 'none' = 'none';
+
   if (hasSolution && (hasProblem || hasRootCause || hasVerification)) {
-    return 'full';
+    category = 'KNOWLEDGE_AVAILABLE';
+    completeness = 'full';
+  } else if (hasProblem && hasSolution) {
+    category = 'KNOWLEDGE_AVAILABLE';
+    completeness = 'full';
+  } else if ((hasProblem && (hasRootCause || hasVerification)) || (hasSolution && !hasProblem)) {
+    category = 'PARTIAL_KNOWLEDGE';
+    completeness = 'partial';
+  } else if (hasProblem) {
+    category = 'PROBLEM_ONLY';
+    completeness = 'partial';
+  } else if (hasRootCause || hasVerification || hasNotes) {
+    category = 'PARTIAL_KNOWLEDGE';
+    completeness = 'partial';
+  } else {
+    category = 'NO_DETAILS';
+    completeness = 'none';
   }
-  if (hasRootCause && hasSolution) {
-    return 'full';
-  }
-  if (hasSolution || hasRootCause || hasProblem || hasVerification || hasNotes) {
-    return 'partial';
-  }
-  return 'none';
+
+  return {
+    category,
+    completeness,
+    hasProblem,
+    hasRootCause,
+    hasSolution,
+    hasVerification,
+    hasNotes,
+  };
 }
 
 /**
@@ -124,14 +156,6 @@ function createSnippet(field: string, text: string | null | undefined, q: string
 
 /**
  * Enhanced Search across knowledge articles and tickets.
- *
- * Prioritizes:
- * 1. Exact Reference Match (highest)
- * 2. Exact Title Match
- * 3. Title / Summary Relevance
- * 4. Knowledge Content Match (Solution, Root Cause, Problem, Verification, Notes)
- * 5. Knowledge Completeness Boost (Full +40%, Partial +15%)
- * 6. Typo Tolerance / Fuzzy Match
  */
 export async function search(
   rawQuery: string,
@@ -209,7 +233,7 @@ export async function search(
   ]);
 
   for (const t of ticketRows) {
-    const completeness = getKnowledgeCompleteness(t);
+    const { category, completeness, hasProblem, hasRootCause, hasSolution, hasVerification, hasNotes } = getKnowledgeCategory(t);
     let baseScore = 0;
     let matchReason: SearchResult['match_reason'] = 'RELATED_KNOWLEDGE';
     let snippet: SearchResult['snippet'];
@@ -277,23 +301,25 @@ export async function search(
       matchReason = 'RELATED_KNOWLEDGE';
     }
 
-    // Default snippet if none created yet
     if (!snippet) {
-      if (hasMeaningfulContent(t.immediate_fix || t.permanent_fix)) {
+      if (hasSolution) {
         snippet = createSnippet('Solution', t.immediate_fix || t.permanent_fix, normalized);
-      } else if (hasMeaningfulContent(t.root_cause)) {
+      } else if (hasRootCause) {
         snippet = createSnippet('Root Cause', t.root_cause, normalized);
-      } else if (hasMeaningfulContent(t.problem_symptoms)) {
+      } else if (hasProblem) {
         snippet = createSnippet('Problem', t.problem_symptoms, normalized);
       }
     }
 
-    // Apply Knowledge Completeness Multiplier
-    // Full knowledge (solution + problem/root cause) gets +40% boost
-    // Partial knowledge gets +15% boost
+    let solutionPreview: string | null = null;
+    if (hasSolution) {
+      const solRaw = (t.immediate_fix || t.permanent_fix || '').replace(/<[^>]*>/g, '').trim();
+      solutionPreview = solRaw.length > 150 ? solRaw.substring(0, 147) + '...' : solRaw;
+    }
+
     let completenessMultiplier = 1.0;
-    if (completeness === 'full') completenessMultiplier = 1.4;
-    else if (completeness === 'partial') completenessMultiplier = 1.15;
+    if (category === 'KNOWLEDGE_AVAILABLE') completenessMultiplier = 1.4;
+    else if (category === 'PARTIAL_KNOWLEDGE') completenessMultiplier = 1.15;
 
     const finalScore = Number((baseScore * completenessMultiplier).toFixed(2));
 
@@ -310,6 +336,13 @@ export async function search(
       priority: t.priority,
       score: finalScore,
       knowledge_completeness: completeness,
+      knowledge_category: category,
+      has_problem: hasProblem,
+      has_root_cause: hasRootCause,
+      has_solution: hasSolution,
+      has_verification: hasVerification,
+      has_notes: hasNotes,
+      solution_preview: solutionPreview,
       match_reason: matchReason,
       match_reason_label: getMatchReasonLabel(matchReason),
       snippet,
@@ -351,7 +384,7 @@ export async function search(
   `, [normalized, tsQuery ? tsQuery : '']);
 
   for (const ka of articleRows) {
-    const completeness = getKnowledgeCompleteness({
+    const { category, completeness, hasProblem, hasRootCause, hasSolution, hasVerification, hasNotes } = getKnowledgeCategory({
       problem_symptoms: ka.symptoms,
       root_cause: ka.root_cause,
       immediate_fix: ka.immediate_fix,
@@ -373,8 +406,8 @@ export async function search(
     }
 
     let multiplier = 1.0;
-    if (completeness === 'full') multiplier = 1.4;
-    else if (completeness === 'partial') multiplier = 1.15;
+    if (category === 'KNOWLEDGE_AVAILABLE') multiplier = 1.4;
+    else if (category === 'PARTIAL_KNOWLEDGE') multiplier = 1.15;
 
     const finalScore = Number((baseScore * multiplier).toFixed(2));
 
@@ -388,6 +421,12 @@ export async function search(
       subtype_code: ka.subtype_code,
       score: finalScore,
       knowledge_completeness: completeness,
+      knowledge_category: category,
+      has_problem: hasProblem,
+      has_root_cause: hasRootCause,
+      has_solution: hasSolution,
+      has_verification: hasVerification,
+      has_notes: hasNotes,
       match_reason: matchReason,
       match_reason_label: getMatchReasonLabel(matchReason),
       snippet,
