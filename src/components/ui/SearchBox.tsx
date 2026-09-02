@@ -13,6 +13,9 @@ interface SearchResult {
   group_name?: string;
   subtype_code?: string;
   score: number;
+  has_solution?: boolean;
+  solution_preview?: string | null;
+  problem_symptoms?: string | null;
 }
 
 interface SearchBoxProps {
@@ -155,58 +158,38 @@ export function SearchBox({
           {!loading && inlineResults.length > 0 && (
             <>
               {inlineResults.map((r: any, idx: number) => {
-                const category = r.knowledge_category || (r.knowledge_completeness === 'full' ? 'KNOWLEDGE_AVAILABLE' : r.knowledge_completeness === 'partial' ? 'PARTIAL_KNOWLEDGE' : 'NO_DETAILS');
+                const hasSolution = r.has_solution;
+                const problemText = r.problem_symptoms || r.summary || "";
                 return (
                   <Link
                     key={`${r.type}-${r.id}-${idx}`}
                     href={r.type === "ticket" ? `/incidents/${r.id}` : `/knowledge/${r.id}`}
                     onClick={handleResultClick}
-                    className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                    className={`block px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 ${
+                      hasSolution ? "border-l-2 border-l-[#215b30]" : ""
+                    }`}
                   >
-                    <div className="flex flex-col gap-1 items-start flex-shrink-0 mt-0.5">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
-                        r.type === "knowledge"
-                          ? "bg-green-50 text-green-700 border-green-200"
-                          : "bg-gray-100 text-gray-600 border-gray-200"
-                      }`}>
-                        {r.type === "knowledge" ? "KB" : "Inc"}
-                      </span>
-                      {category === "KNOWLEDGE_AVAILABLE" && (
-                        <span className="text-[9px] text-emerald-800 font-semibold bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-full whitespace-nowrap">
-                          ✓ Knowledge
-                        </span>
-                      )}
-                      {category === "PARTIAL_KNOWLEDGE" && (
-                        <span className="text-[9px] text-amber-800 font-semibold bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded-full whitespace-nowrap">
-                          ◐ Partial
-                        </span>
-                      )}
-                      {category === "PROBLEM_ONLY" && (
-                        <span className="text-[9px] text-slate-700 font-medium bg-slate-100 border border-slate-200 px-1.5 py-0.2 rounded-full whitespace-nowrap">
-                          Problem Only
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-gray-900 truncate">{r.title}</p>
+                      {r.match_reason_label && (
+                        <span className="text-[10px] text-blue-600 font-medium bg-blue-50 px-1.5 py-0.5 rounded">
+                          {r.match_reason_label}
                         </span>
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-gray-900 truncate">{r.title}</p>
-                        {r.match_reason_label && (
-                          <span className="text-[10px] text-blue-600 font-medium bg-blue-50 px-1.5 py-0.5 rounded">
-                            {r.match_reason_label}
-                          </span>
-                        )}
-                      </div>
-                      {r.summary && (
-                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{r.summary}</p>
+                    {problemText && (
+                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{problemText}</p>
+                    )}
+                    <div className="flex items-center gap-2 mt-1">
+                      {r.group_name && (
+                        <span className="text-[10px] text-gray-400">{r.group_name}</span>
                       )}
-                      <div className="flex items-center gap-2 mt-1">
-                        {r.group_name && (
-                          <span className="text-[10px] text-gray-400">{r.group_name}</span>
-                        )}
-                        {r.subtype_code && (
-                          <span className="text-[10px] text-gray-400">· {r.subtype_code}</span>
-                        )}
-                      </div>
+                      {r.subtype_code && (
+                        <span className="text-[10px] text-gray-400">· {r.subtype_code}</span>
+                      )}
+                      {hasSolution && (
+                        <span className="text-[10px] font-semibold" style={{ color: "var(--primary)" }}>✓ Solution available</span>
+                      )}
                     </div>
                   </Link>
                 );
