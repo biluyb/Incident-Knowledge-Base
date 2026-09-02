@@ -147,7 +147,6 @@ export default function IncidentsPage() {
                   <tr className="border-b border-gray-200 bg-gray-50">
                     <th className="text-left px-4 py-2 font-medium text-gray-600 text-xs uppercase tracking-wider">Reference</th>
                     <th className="text-left px-4 py-2 font-medium text-gray-600 text-xs uppercase tracking-wider">Incident</th>
-                    <th className="text-left px-4 py-2 font-medium text-gray-600 text-xs uppercase tracking-wider">Knowledge</th>
                     <th className="text-left px-4 py-2 font-medium text-gray-600 text-xs uppercase tracking-wider">Group</th>
                     <th className="text-left px-4 py-2 font-medium text-gray-600 text-xs uppercase tracking-wider">Subgroup</th>
                     <th className="text-left px-4 py-2 font-medium text-gray-600 text-xs uppercase tracking-wider">Date</th>
@@ -168,38 +167,13 @@ export default function IncidentsPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-2 text-gray-700 max-w-xs truncate">{ticket.summary}</td>
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        <div className="flex flex-col gap-1 items-start">
+                      <td className="px-4 py-2 text-gray-700 max-w-xs truncate">
+                        <span className="flex items-center gap-2">
                           {ticket.knowledge_category === "KNOWLEDGE_AVAILABLE" && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                              ✓ Knowledge Available
-                            </span>
+                            <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" title="Detailed incident" />
                           )}
-                          {ticket.knowledge_category === "PARTIAL_KNOWLEDGE" && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                              ◐ Partial Knowledge
-                            </span>
-                          )}
-                          {ticket.knowledge_category === "PROBLEM_ONLY" && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                              Problem Only
-                            </span>
-                          )}
-                          {(!ticket.knowledge_category || ticket.knowledge_category === "NO_DETAILS") && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-500 border border-gray-200">
-                              ○ No Details
-                            </span>
-                          )}
-
-                          {/* Field availability indicator summary */}
-                          <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-medium">
-                            <span>Prob {ticket.has_problem || ticket.summary ? <strong className="text-emerald-600">✓</strong> : "—"}</span>
-                            <span>Root {ticket.has_root_cause ? <strong className="text-emerald-600">✓</strong> : "—"}</span>
-                            <span>Sol {ticket.has_solution ? <strong className="text-emerald-600">✓</strong> : "—"}</span>
-                            <span>Verif {ticket.has_verification ? <strong className="text-emerald-600">✓</strong> : "—"}</span>
-                          </div>
-                        </div>
+                          <span className="truncate">{ticket.summary}</span>
+                        </span>
                       </td>
                       <td className="px-4 py-2">
                         {ticket.group_code && (
