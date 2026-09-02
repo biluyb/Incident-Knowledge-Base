@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyPassword, getUserByEmail, createSession, setSessionCookie, updateLastLogin } from '@/lib/auth';
+import { checkRateLimit, resetRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '127.0.0.1';
     const body = await request.json();
     const { email, password } = body;
 
@@ -12,6 +14,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Email and password are required' },
         { status: 400 }
+      );
+    }
+
+    // Rate limiting key: IP + email
+    const rateLimitKey = `login:${ip}:${email.toLowerCase().trim()}`;
+    const rateCheck = checkRateLimit(rateLimitKey, 5, 15 * 60 * 1000);
+
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: `Too many failed login attempts. Please try again in ${rateCheck.retryAfter} seconds.` },
+        { status: 429, headers: { 'Retry-After': String(rateCheck.retryAfter) } }
       );
     }
 
@@ -40,6 +53,9 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    // Reset rate limit counter on success
+    resetRateLimit(rateLimitKey);
 
     // Create JWT session
     const token = await createSession({

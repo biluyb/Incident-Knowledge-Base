@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -17,7 +17,7 @@ interface Subtype {
   group_id: number;
 }
 
-export default function AddKnowledgePage() {
+function AddKnowledgeForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fromIncidentId = searchParams.get("from_incident");
@@ -53,10 +53,10 @@ export default function AddKnowledgePage() {
         : Promise.resolve(null),
     ])
       .then(([groupsData, incidentData]) => {
-        setGroups(groupsData);
+        setGroups(groupsData || []);
         if (incidentData && !incidentData.error) {
           // Pre-fill form from incident data
-          const matchedGroup = groupsData.find(
+          const matchedGroup = (groupsData || []).find(
             (g: Group) => g.code === incidentData.group_code || g.id === incidentData.group_id
           );
           setForm({
@@ -326,5 +326,18 @@ export default function AddKnowledgePage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function AddKnowledgePage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-3xl space-y-6">
+        <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse" />
+        <div className="h-64 bg-gray-100 rounded-xl border border-gray-200 animate-pulse" />
+      </div>
+    }>
+      <AddKnowledgeForm />
+    </Suspense>
   );
 }

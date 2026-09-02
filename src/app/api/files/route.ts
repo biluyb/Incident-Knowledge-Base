@@ -62,9 +62,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `File too large. Maximum size is ${MAX_SIZE / 1024 / 1024}MB.` }, { status: 400 });
     }
 
-    // Validate file type
-    if (!ALLOWED_TYPES.includes(file.type) && !file.name.endsWith('.log') && !file.name.endsWith('.sql')) {
-      return NextResponse.json({ error: 'File type not allowed' }, { status: 400 });
+    // Validate file type & extension whitelist
+    const ext = path.extname(file.name).toLowerCase();
+    const ALLOWED_EXTENSIONS = ['.png', '.jpeg', '.jpg', '.gif', '.webp', '.pdf', '.txt', '.csv', '.xml', '.json', '.doc', '.docx', '.xls', '.xlsx', '.zip', '.log', '.sql'];
+
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      return NextResponse.json({ error: `File extension '${ext}' is not allowed.` }, { status: 400 });
+    }
+
+    if (!ALLOWED_TYPES.includes(file.type) && !ext.endsWith('.log') && !ext.endsWith('.sql')) {
+      return NextResponse.json({ error: 'File MIME type not allowed' }, { status: 400 });
     }
 
     // Sanitize filename
@@ -77,7 +84,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate safe filename
-    const ext = path.extname(file.name) || '';
     const safeFilename = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}${ext}`;
     const filepath = path.join(UPLOAD_DIR, safeFilename);
 
