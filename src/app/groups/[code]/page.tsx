@@ -144,14 +144,14 @@ export default function GroupDetailPage() {
               <button
                 key={sg.id}
                 onClick={() => { setSelectedSubgroup(sg.id); setPage(1); }}
-                className={`text-left p-3 rounded-lg border transition-colors ${
+                className={`text-left p-3 rounded-lg border transition-colors min-w-0 ${
                   selectedSubgroup === sg.id
                     ? "border-[var(--primary)] bg-[var(--primary-lighter)]"
                     : "border-gray-200 bg-white hover:border-gray-300"
                 }`}
-                title={sg.description}
+                title={sg.description || sg.name}
               >
-                <p className="text-sm font-medium text-gray-900">{sg.name}</p>
+                <p className="text-sm font-medium text-gray-900 truncate">{sg.name}</p>
                 {sg.description && (
                   <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{sg.description}</p>
                 )}

@@ -342,15 +342,15 @@ export default function EditIncidentPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Group</label>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <select
                   value={form.group_id}
                   onChange={(e) => setForm({ ...form, group_id: e.target.value, subgroup_id: "" })}
                   required
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
                 >
                   <option value="">Select group...</option>
                   {groups.map((g) => (
@@ -360,7 +360,7 @@ export default function EditIncidentPage() {
                 <button
                   type="button"
                   onClick={() => setShowNewGroup(true)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-xs font-medium hover:bg-gray-50 whitespace-nowrap"
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-xs font-medium hover:bg-gray-50 whitespace-nowrap flex-shrink-0"
                   style={{ color: "var(--primary)" }}
                   title="Create new group"
                 >
@@ -370,12 +370,12 @@ export default function EditIncidentPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Subgroup</label>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <select
                   value={form.subgroup_id}
                   onChange={(e) => setForm({ ...form, subgroup_id: e.target.value })}
                   disabled={!form.group_id}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-50"
+                  className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white disabled:bg-gray-50 disabled:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
                 >
                   <option value="">{subgroups.length === 0 ? "No subgroups" : "Select subgroup..."}</option>
                   {subgroups.map((sg) => (
@@ -386,7 +386,7 @@ export default function EditIncidentPage() {
                   type="button"
                   onClick={() => setShowNewSubgroup(true)}
                   disabled={!form.group_id}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-xs font-medium hover:bg-gray-50 whitespace-nowrap disabled:opacity-50"
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-xs font-medium hover:bg-gray-50 whitespace-nowrap flex-shrink-0 disabled:opacity-50"
                   style={{ color: "var(--primary)" }}
                   title="Create new subgroup"
                 >
