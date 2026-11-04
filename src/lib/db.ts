@@ -31,30 +31,22 @@ export async function queryOne<T = any>(text: string, params?: any[]): Promise<T
   return rows[0] || null;
 }
 
-// Transaction helper
-export async function transaction<T>(fn: (query: typeof clientQuery) => Promise<T>): Promise<T> {
+// Transaction helper with properly scoped connection
+export type QueryFn = <R = any>(text: string, params?: any[]) => Promise<R[]>;
+
+export async function transaction<T>(fn: (txQuery: QueryFn) => Promise<T>): Promise<T> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const result = await fn(async (text: string, params?: any[]) => {
+    const result = await fn(async <R = any>(text: string, params?: any[]) => {
       const res = await client.query(text, params);
-      return res.rows;
+      return res.rows as R[];
     });
     await client.query('COMMIT');
     return result;
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
-  } finally {
-    client.release();
-  }
-}
-
-async function clientQuery(text: string, params?: any[]) {
-  const client = await pool.connect();
-  try {
-    const result = await client.query(text, params);
-    return result.rows;
   } finally {
     client.release();
   }

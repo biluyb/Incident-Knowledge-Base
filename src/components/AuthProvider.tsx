@@ -19,6 +19,7 @@ interface AuthContextType {
   hasRole: (role: string) => boolean;
   hasPermission: (permission: string) => boolean;
   isAdmin: boolean;
+  isTeamLead: boolean;
   isKnowledgeManager: boolean;
   isContributor: boolean;
   isViewer: boolean;
@@ -36,7 +37,8 @@ export function useAuth() {
 
 // Role hierarchy for permission checks
 const ROLE_HIERARCHY: Record<string, number> = {
-  admin: 4,
+  admin: 5,
+  team_lead: 4,
   knowledge_manager: 3,
   contributor: 2,
   viewer: 1,
@@ -45,34 +47,58 @@ const ROLE_HIERARCHY: Record<string, number> = {
 // Permission matrix
 const PERMISSIONS: Record<string, string[]> = {
   admin: [
-    "incident.view", "incident.create", "incident.edit", "incident.delete",
-    "knowledge.view", "knowledge.create", "knowledge.edit", "knowledge.delete",
+    "incident.view", "incident.create", "incident.edit", "incident.delete", "incident.assign", "incident.escalate",
+    "knowledge.view", "knowledge.create", "knowledge.edit", "knowledge.delete", "knowledge.approve",
     "group.view", "group.create", "group.edit", "group.delete",
     "subtype.view", "subtype.create", "subtype.edit", "subtype.delete",
+    "project.view", "project.create", "project.edit", "project.delete", "project.manage_members",
+    "task.view", "task.create", "task.edit", "task.delete", "task.assign",
+    "daily_report.view", "daily_report.submit", "daily_report.review", "daily_report.export",
+    "escalation.view", "escalation.create", "escalation.manage", "escalation.resolve",
     "file.view", "file.upload", "file.delete",
     "comment.view", "comment.create", "comment.edit_own", "comment.delete_own", "comment.delete_any",
-    "user.view", "user.manage", "user.change_role",
-    "audit.view", "search",
+    "user.view", "user.manage", "user.change_role", "team.manage",
+    "audit.view", "analytics.view", "search",
   ],
-  knowledge_manager: [
-    "incident.view", "incident.create", "incident.edit", "incident.delete",
-    "knowledge.view", "knowledge.create", "knowledge.edit", "knowledge.delete",
+  team_lead: [
+    "incident.view", "incident.create", "incident.edit", "incident.delete", "incident.assign", "incident.escalate",
+    "knowledge.view", "knowledge.create", "knowledge.edit", "knowledge.approve",
     "group.view", "group.create", "group.edit",
     "subtype.view", "subtype.create", "subtype.edit",
+    "project.view", "project.create", "project.edit", "project.manage_members",
+    "task.view", "task.create", "task.edit", "task.delete", "task.assign",
+    "daily_report.view", "daily_report.submit", "daily_report.review", "daily_report.export",
+    "escalation.view", "escalation.create", "escalation.manage", "escalation.resolve",
     "file.view", "file.upload", "file.delete",
     "comment.view", "comment.create", "comment.edit_own", "comment.delete_own", "comment.delete_any",
-    "audit.view", "search",
+    "user.view", "audit.view", "analytics.view", "search",
+  ],
+  knowledge_manager: [
+    "incident.view", "incident.create", "incident.edit", "incident.escalate",
+    "knowledge.view", "knowledge.create", "knowledge.edit", "knowledge.delete", "knowledge.approve",
+    "group.view", "group.create", "group.edit",
+    "subtype.view", "subtype.create", "subtype.edit",
+    "project.view", "task.view",
+    "daily_report.view", "daily_report.submit",
+    "escalation.view", "escalation.create",
+    "file.view", "file.upload", "file.delete",
+    "comment.view", "comment.create", "comment.edit_own", "comment.delete_own", "comment.delete_any",
+    "analytics.view", "search",
   ],
   contributor: [
-    "incident.view", "incident.create", "incident.edit",
+    "incident.view", "incident.create", "incident.edit", "incident.escalate",
     "knowledge.view", "knowledge.create", "knowledge.edit",
     "group.view", "subtype.view",
+    "project.view", "task.view", "task.create", "task.edit",
+    "daily_report.view", "daily_report.submit",
+    "escalation.view", "escalation.create",
     "file.view", "file.upload", "file.delete",
     "comment.view", "comment.create", "comment.edit_own", "comment.delete_own",
     "search",
   ],
   viewer: [
     "incident.view", "knowledge.view", "group.view", "subtype.view",
+    "project.view", "task.view", "escalation.view",
     "file.view", "comment.view", "search",
   ],
 };
@@ -106,49 +132,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       const data = await res.json();
+
       if (!res.ok) {
-        return { success: false, error: data.error };
+        return { success: false, error: data.error || "Login failed" };
       }
 
       setUser(data.user);
       return { success: true };
     } catch {
-      return { success: false, error: "Network error" };
+      return { success: false, error: "Network error. Please try again." };
     }
   };
 
   const logout = async () => {
-    // Fire-and-forget: clear session on server, don't wait
-    fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
-    setUser(null);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // Ignore network errors on logout
+    } finally {
+      setUser(null);
+    }
   };
 
-  const hasRole = (role: string) => {
+  const refresh = async () => {
+    await fetchUser();
+  };
+
+  const hasRole = (role: string): boolean => {
     if (!user) return false;
-    return user.role === role;
+    const userRoleHierarchy = ROLE_HIERARCHY[user.role] || 0;
+    const requiredRoleHierarchy = ROLE_HIERARCHY[role] || 0;
+    return userRoleHierarchy >= requiredRoleHierarchy;
   };
 
-  const hasPermission = (permission: string) => {
+  const hasPermission = (permission: string): boolean => {
     if (!user) return false;
-    const rolePerms = PERMISSIONS[user.role] || [];
-    return rolePerms.includes(permission);
+    const userPermissions = PERMISSIONS[user.role] || [];
+    return userPermissions.includes(permission);
   };
 
-  const roleLevel = user ? ROLE_HIERARCHY[user.role] || 0 : 0;
-
-  const value: AuthContextType = {
-    user,
-    loading,
-    login,
-    logout,
-    refresh: fetchUser,
-    hasRole,
-    hasPermission,
-    isAdmin: roleLevel >= 4,
-    isKnowledgeManager: roleLevel >= 3,
-    isContributor: roleLevel >= 2,
-    isViewer: roleLevel >= 1,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+        refresh,
+        hasRole,
+        hasPermission,
+        isAdmin: user?.role === "admin",
+        isTeamLead: user?.role === "team_lead",
+        isKnowledgeManager: user?.role === "knowledge_manager",
+        isContributor: user?.role === "contributor",
+        isViewer: user?.role === "viewer",
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }

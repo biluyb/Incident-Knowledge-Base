@@ -38,7 +38,7 @@ function isPublicRoute(pathname: string): boolean {
 
   // Check dynamic routes
   if (pathname.startsWith('/groups/')) return true;
-  if (pathname.startsWith('/knowledge/') && !pathname.includes('/edit')) return true;
+  if (pathname.startsWith('/knowledge/') && !pathname.includes('/edit') && !pathname.includes('/new') && !pathname.includes('/review')) return true;
   if (pathname.startsWith('/incidents/') && !pathname.includes('/edit') && !pathname.includes('/new')) return true;
   if (pathname.startsWith('/search')) return true;
 
@@ -46,7 +46,6 @@ function isPublicRoute(pathname: string): boolean {
 }
 
 function isPublicApiRoute(pathname: string): boolean {
-  // Check if it's a GET request to a public API
   for (const route of PUBLIC_API_ROUTES) {
     if (pathname.startsWith(route)) return true;
   }
@@ -67,32 +66,30 @@ export async function proxy(request: NextRequest) {
 
   // Get session token from cookie
   const token = request.cookies.get('kb-session')?.value;
-  let session = null;
+  let session: any = null;
 
   if (token) {
     try {
       const { payload } = await jwtVerify(token, JWT_SECRET);
       session = payload;
     } catch {
-      // Invalid or expired token
       session = null;
     }
   }
 
   // Allow public routes without authentication
   if (isPublicRoute(pathname)) {
-    // For read-only API routes, allow GET without auth
     if (pathname.startsWith('/api/') && isPublicApiRoute(pathname)) {
       if (request.method === 'GET') {
         return NextResponse.next();
       }
+    } else {
+      return NextResponse.next();
     }
-    return NextResponse.next();
   }
 
   // Require authentication for protected routes
   if (!session) {
-    // For API routes, return 401
     if (pathname.startsWith('/api/')) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -100,7 +97,6 @@ export async function proxy(request: NextRequest) {
       );
     }
 
-    // For page routes, redirect to login
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('from', pathname);
     return NextResponse.redirect(loginUrl);
@@ -109,20 +105,7 @@ export async function proxy(request: NextRequest) {
   // Role-based route protection
   const role = session.role as string;
 
-  // Admin-only routes
-  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
-    if (role !== 'admin' && role !== 'knowledge_manager') {
-      if (pathname.startsWith('/api/')) {
-        return NextResponse.json(
-          { error: 'Admin access required' },
-          { status: 403 }
-        );
-      }
-      return NextResponse.redirect(new URL('/', request.url));
-    }
-  }
-
-  // User management routes (admin only)
+  // Admin-only management routes
   if (pathname.startsWith('/api/users') || pathname.startsWith('/admin/users')) {
     if (role !== 'admin') {
       if (pathname.startsWith('/api/')) {
@@ -135,9 +118,22 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Audit log routes (admin and knowledge_manager)
+  // Admin / Team Lead / Knowledge Manager routes
+  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
+    if (role !== 'admin' && role !== 'team_lead' && role !== 'knowledge_manager') {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json(
+          { error: 'Administrative access required' },
+          { status: 403 }
+        );
+      }
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+  }
+
+  // Audit log routes (admin and team_lead and knowledge_manager)
   if (pathname.startsWith('/api/audit') || pathname.startsWith('/admin/audit')) {
-    if (role !== 'admin' && role !== 'knowledge_manager') {
+    if (role !== 'admin' && role !== 'team_lead' && role !== 'knowledge_manager') {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json(
           { error: 'Insufficient permissions' },
@@ -148,10 +144,9 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Write operations require auth (POST, PUT, DELETE)
-  if (['POST', 'PUT', 'DELETE'].includes(request.method)) {
+  // Write operations require auth (POST, PUT, PATCH, DELETE)
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
     if (pathname.startsWith('/api/')) {
-      // Add user info to headers for downstream handlers
       const response = NextResponse.next();
       response.headers.set('x-user-id', String(session.userId));
       response.headers.set('x-user-role', role);
@@ -165,13 +160,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public files
-     */
     '/((?!_next/static|_next/image|favicon.ico|public).*)',
   ],
 };

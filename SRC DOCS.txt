@@ -1,0 +1,1782 @@
+# CORE SYSTEMS HUB
+## Software Requirements Specification (SRS), System Workflows, Database Architecture and Implementation Roadmap
+
+**Organization:** Tsehay Bank  
+**Department:** Core Systems / Core Banking Support  
+**System Name:** Core Systems Hub  
+**Document Type:** Software Requirements Specification and Technical Design  
+**Version:** 1.0  
+**Status:** Proposed Baseline  
+**Date:** 04 November 2026
+
+---
+
+# 1. EXECUTIVE SUMMARY
+
+## 1.1 Project Overview
+
+Core Systems Hub is an internal web-based productivity, knowledge management, incident management, and work coordination platform designed for the Core Systems team.
+
+The system will provide a centralized environment where staff members can:
+
+- Document technical knowledge, projects, procedures, and completed work.
+- Register and manage incidents reported through the Temenos support portal.
+- Record daily work activities and automatically generate individual and consolidated reports.
+- Create and manage departmental projects and individual tasks.
+- Escalate unresolved incidents, technical blockers, and project delays.
+- Monitor team activities, work progress, incident trends, and knowledge contributions.
+
+The system will reduce dependency on scattered Excel files, individual documents, email conversations, and manually prepared reports.
+
+It will also preserve institutional technical knowledge and make it accessible to authorized team members.
+
+## 1.2 Main Objectives
+
+1. Centralize technical knowledge and operational documentation.
+2. Improve visibility of Temenos incidents and their internal handling.
+3. Automate individual daily reporting and team report generation.
+4. Improve project and task coordination.
+5. Provide a structured escalation and follow-up mechanism.
+6. Improve management visibility through dashboards and reports.
+7. Preserve historical technical solutions and lessons learned.
+8. Strengthen accountability, collaboration, and knowledge sharing.
+9. Provide measurable evidence of team activities and project delivery.
+
+## 1.3 Project Scope
+
+The system consists of the following modules:
+
+| Module | Main responsibility |
+|---|---|
+| Dashboard | Overview of team activities and important indicators |
+| Knowledge Management | Technical knowledge, procedures, project documentation and lessons learned |
+| Temenos Incident Management | Manual incident registration, assignment, investigation, tracking and resolution |
+| Daily Activities | Individual daily work reporting |
+| Report Generator | Individual, team, weekly, monthly and project reports |
+| Project Management | Project creation, milestones, progress and ownership |
+| Task Management | Task assignment, deadlines, status and completion |
+| Escalation Management | Escalating incidents and internal blockers |
+| Document Management | Secure attachments and shared technical documents |
+| Team Management | User administration and permissions |
+| Administration | Configuration, categories, templates and audit management |
+| Analytics | Operational and management reporting |
+
+## 1.4 Out of Scope for the Initial Release
+
+The following are not included in the initial version:
+
+- Automatic integration with the Temenos support portal.
+- Replacing the official Temenos portal.
+- Automatic monitoring of production T24 transactions.
+- Automated T24 COB or EOD execution.
+- Infrastructure monitoring and alerting.
+- Full HR, payroll or employee performance appraisal management.
+- Financial accounting and transaction processing.
+- Automatic escalation through external communication systems unless separately approved.
+- Replacing an existing bank-wide service-management platform.
+
+Future integrations may be considered after the initial platform is stable.
+
+---
+
+# 2. USER ROLES AND PERMISSIONS
+
+## 2.1 Proposed Roles
+
+### ADMIN
+
+Responsible for system administration.
+
+Permissions:
+- Manage users and roles.
+- Configure permissions.
+- Create and manage system categories.
+- Configure report templates.
+- Manage system settings.
+- View audit logs.
+- Manage all records when authorized.
+- Manage application-wide access.
+
+### TEAM_LEAD / MANAGER
+
+Responsible for coordinating the team.
+
+Permissions:
+- View team dashboards.
+- View submitted daily reports.
+- Review and return reports for correction.
+- Create and manage projects.
+- Assign tasks.
+- Monitor incidents.
+- Manage escalations.
+- Review and approve knowledge articles.
+- Generate team reports.
+- View team performance indicators.
+
+### KNOWLEDGE_MANAGER
+
+Responsible for technical knowledge quality.
+
+Permissions:
+- Review knowledge articles.
+- Approve or reject submitted articles.
+- Manage knowledge categories.
+- Maintain reusable troubleshooting guides.
+- Manage knowledge article versions.
+- Monitor article quality.
+
+### CONTRIBUTOR / STAFF
+
+Responsible for daily operational activities.
+
+Permissions:
+- Create knowledge articles.
+- Edit own permitted drafts.
+- Register incidents.
+- Update assigned incidents.
+- Submit daily reports.
+- Create or update assigned tasks.
+- Create project updates when authorized.
+- Raise escalations.
+- Comment on authorized records.
+- Upload permitted attachments.
+- Search and read published knowledge.
+
+### VIEWER
+
+Read-only access to authorized content.
+
+Permissions:
+- View published knowledge.
+- View authorized incidents and reports.
+- View authorized projects and tasks.
+- Download permitted documents.
+
+## 2.2 Authorization Rules
+
+Authorization must be enforced on the server.
+
+Hiding buttons in the frontend is not sufficient.
+
+Important rules:
+
+1. Staff members can edit their own profile but cannot change their own role.
+2. Staff members cannot change another user's permissions.
+3. A contributor can edit only records for which they have permission.
+4. Team leaders can access records within their authorized team scope.
+5. Knowledge approval must be restricted to authorized reviewers.
+6. Only authorized users can view confidential attachments.
+7. Deleting users must not destroy their historical contributions.
+8. Changes to roles and sensitive records must be audited.
+9. Access to individual daily reports must follow configured reporting permissions.
+10. Administrative actions must be checked by the backend on every request.
+
+## 2.3 Suggested Permission Matrix
+
+| Capability | Admin | Manager | Knowledge Manager | Contributor | Viewer |
+|---|---|---|---|---|---|
+| Manage users | Yes | No | No | No | No |
+| Create knowledge | Yes | Yes | Yes | Yes | No |
+| Approve knowledge | Yes | Yes | Yes | No | No |
+| Register incidents | Yes | Yes | Yes | Yes | No |
+| Assign incidents | Yes | Yes | Configurable | No | No |
+| Update assigned incidents | Yes | Yes | Configurable | Yes | No |
+| Submit daily report | Yes | Yes | Yes | Yes | No |
+| Review team reports | Yes | Yes | No | No | No |
+| Manage projects | Yes | Yes | Configurable | No | No |
+| Manage tasks | Yes | Yes | Configurable | Assigned tasks | No |
+| Raise escalations | Yes | Yes | Yes | Yes | No |
+| Manage escalations | Yes | Yes | Configurable | No | No |
+| View analytics | Yes | Yes | Limited | Own/team permitted | Limited |
+| View audit logs | Yes | Authorized | No | No | No |
+
+The final permission matrix should be configurable rather than permanently hardcoded.
+
+---
+
+# 3. FUNCTIONAL REQUIREMENTS
+
+# MODULE 1: KNOWLEDGE MANAGEMENT
+
+## 3.1 Purpose
+
+Provide a centralized repository where staff members document how they perform tasks, implement projects, solve technical problems, configure systems, and learn from experience.
+
+Knowledge is a team asset and must remain available even when its original author leaves the organization.
+
+## 3.2 Knowledge Categories
+
+Proposed categories:
+
+- Temenos T24 / Transact
+- AA / Arrangements
+- COB / EOD / SOD
+- TAFJ / JBoss
+- Oracle Database
+- FCM / AML
+- Integration and APIs
+- Payments and Transfers
+- Interest and Loans
+- System Administration
+- Infrastructure and Deployment
+- Projects and Implementations
+- Troubleshooting and Known Errors
+- Operational Procedures
+- Other
+
+Administrators must be able to create additional categories.
+
+## 3.3 Knowledge Article Fields
+
+| Field | Required | Description |
+|---|---|---|
+| Article ID | Automatic | Unique identifier |
+| Title | Yes | Knowledge article title |
+| Category | Yes | Main knowledge category |
+| Project / System | Optional | Related project or application |
+| Module | Optional | T24 module or technical area |
+| Summary | Yes | Short explanation |
+| Objective / Problem | Yes | What was required or what problem occurred |
+| Prerequisites | Optional | Requirements before implementation |
+| Implementation Steps | Yes | Detailed procedure |
+| Configuration / Technical Details | Optional | Technical configuration and code references |
+| Challenges | Optional | Problems encountered |
+| Solution | Optional | How the problem was solved |
+| Verification | Optional | How successful completion was confirmed |
+| Lessons Learned | Optional | Knowledge gained |
+| References | Optional | Related incidents, documents or articles |
+| Attachments | Optional | Supporting files |
+| Author | Automatic | User who created the article |
+| Reviewer | Automatic when reviewed | User responsible for review |
+| Status | Automatic | Draft, submitted, approved, rejected, archived |
+| Created Date | Automatic | Creation date |
+| Updated Date | Automatic | Last update |
+
+## 3.4 Knowledge Article Workflow
+
+1. Staff member creates a new article.
+2. Staff member selects a category and provides the technical information.
+3. The article is saved as Draft.
+4. Staff member submits it for review.
+5. Knowledge Manager or authorized Team Lead reviews it.
+6. Reviewer approves or rejects it.
+7. Approved articles become searchable by authorized users.
+8. Other staff members can comment, provide improvements, or rate usefulness.
+9. Major changes create a new article version.
+10. Old versions remain available to authorized reviewers.
+
+### Article Statuses
+
+- DRAFT
+- SUBMITTED
+- UNDER_REVIEW
+- APPROVED
+- REJECTED
+- ARCHIVED
+
+## 3.5 Knowledge Search
+
+Search must support:
+
+- Article title.
+- Article ID.
+- Category and module.
+- Project name.
+- Error message.
+- Technical keywords.
+- Implementation steps.
+- Solution.
+- Related TSR references.
+
+Search should be fast and typo tolerant.
+
+## 3.6 Knowledge Quality and Reuse
+
+The system should track:
+
+- Number of articles created by each staff member.
+- Number of approved articles.
+- Number of article views.
+- Number of comments.
+- Usefulness feedback.
+- Articles linked to incidents.
+- Frequently reused solutions.
+
+Views and contributions are supporting indicators, not automatic measures of employee performance.
+
+---
+
+# MODULE 2: TEMENOS INCIDENT MANAGEMENT
+
+## 4.1 Purpose
+
+Provide an internal management interface for incidents received from the Temenos support portal.
+
+Staff members manually register the incidents and maintain the bank's internal investigation, ownership, follow-up, escalation, and resolution information.
+
+The official Temenos portal remains the source of the external support case.
+
+## 4.2 Incident Registration
+
+### Required Fields
+
+| Field | Required |
+|---|---|
+| TSR Reference | Yes |
+| Incident Title | Yes |
+| Description / Problem | Yes |
+| Temenos Module | Yes |
+| Group | Yes |
+| Subgroup | Optional |
+| Priority | Yes |
+| Severity | Yes |
+| Date Reported to Temenos | Yes |
+| Internal Owner | Yes |
+| Current Status | Yes |
+
+### Optional Fields
+
+- Temenos assigned engineer.
+- Temenos response reference.
+- Root cause.
+- Internal investigation.
+- Actions taken.
+- Solution / Fix.
+- Verification.
+- Notes.
+- Related project.
+- Attachments.
+- Related knowledge articles.
+- External portal link, where permitted.
+
+## 4.3 Incident Status Workflow
+
+Initial statuses:
+
+- NEW
+- ASSIGNED
+- INVESTIGATING
+- WAITING_FOR_TEMENOS
+- WAITING_FOR_INTERNAL_TEAM
+- RESOLVED
+- CLOSED
+- REOPENED
+- ESCALATED
+
+A record must retain its status history.
+
+The system must distinguish between:
+
+- Internal incident status.
+- Official Temenos portal status.
+
+The internal status must never be presented as the official Temenos status unless it has been verified.
+
+## 4.4 Incident Lifecycle
+
+1. Staff member receives or identifies a Temenos incident.
+2. Staff member manually registers the TSR.
+3. The system validates that the TSR reference is not duplicated.
+4. An authorized user assigns an internal owner.
+5. The owner investigates the issue.
+6. The owner records actions and updates the incident.
+7. If the issue is waiting for Temenos, the owner records the follow-up date.
+8. If blocked, the owner can raise an escalation.
+9. When resolved, the owner records the solution and verification.
+10. The incident is closed internally after authorized confirmation.
+11. The solution can be converted into or linked to an approved knowledge article.
+
+## 4.5 Incident Management Features
+
+- Incident creation and editing.
+- Assignment and reassignment.
+- Status history.
+- Internal comments.
+- Temenos correspondence records.
+- Attachments.
+- Priority and severity.
+- Due dates and follow-up dates.
+- Overdue indicators.
+- Escalation.
+- Related knowledge articles.
+- Similar historical incident suggestions.
+- Incident search.
+- Filtering and pagination.
+- Incident reports.
+
+## 4.6 Incident Analytics
+
+Reports should include:
+
+- Total registered incidents.
+- Open incidents.
+- Resolved incidents.
+- Incidents waiting for Temenos.
+- Escalated incidents.
+- Incidents by module.
+- Incidents by priority and severity.
+- Incidents by internal owner.
+- Average internal resolution time.
+- Average time waiting for Temenos, where data is available.
+- Recurring problems.
+- Root-cause categories.
+
+Resolution-time reports must distinguish time under internal control from time awaiting an external response.
+
+---
+
+# MODULE 3: DAILY ACTIVITIES AND REPORTING
+
+## 5.1 Purpose
+
+Allow every staff member to record daily work activities through a simple form.
+
+The system automatically organizes these submissions into individual and consolidated team reports.
+
+Staff members should not need to prepare the same information again in Word or Excel.
+
+## 5.2 Daily Activity Fields
+
+| Field | Required | Description |
+|---|---|---|
+| Activity ID | Automatic | Unique activity reference |
+| Employee | Automatic | Logged-in user |
+| Report Date | Yes | Date of activity |
+| Project | Optional | Related project |
+| Task | Optional | Related task |
+| Related TSR | Optional | Related incident |
+| Activity Title | Yes | Short description |
+| Work Performed | Yes | Detailed activity |
+| Result / Outcome | Yes | What was achieved |
+| Status | Yes | Completed, In Progress, Blocked |
+| Challenges | Optional | Issues encountered |
+| Next Action | Optional | Planned next step |
+| Hours Spent | Optional | Actual time, if required |
+| Attachments | Optional | Supporting evidence |
+
+One daily report can contain multiple activities.
+
+## 5.3 Daily Report Workflow
+
+1. Staff member opens Daily Activities.
+2. System defaults the report date to the current date.
+3. Staff member records one or more activities.
+4. Staff member saves the report as Draft.
+5. Staff member reviews and submits it.
+6. Team Lead reviews submitted reports.
+7. Team Lead can approve or return a report with comments.
+8. The system includes approved/submitted activities in the consolidated team report according to configured reporting rules.
+9. Authorized users generate Word, PDF or Excel reports.
+
+## 5.4 Daily Report Statuses
+
+- DRAFT
+- SUBMITTED
+- UNDER_REVIEW
+- RETURNED
+- APPROVED
+
+A submitted report should not be silently overwritten. Changes after submission must create an audit entry and follow the configured correction process.
+
+## 5.5 Report Generation
+
+Supported formats:
+
+- Microsoft Word (.docx)
+- PDF (.pdf)
+- Microsoft Excel (.xlsx)
+
+### Individual Daily Report
+
+Includes:
+
+- Bank/department heading.
+- Employee name.
+- Report date.
+- Activities performed.
+- Related projects and incidents.
+- Results.
+- Challenges.
+- Next actions.
+- Reviewer and approval status.
+
+### Consolidated Team Report
+
+Includes:
+
+- Report date.
+- Team members who submitted reports.
+- Total submitted reports.
+- Activities by employee.
+- Activities by project.
+- Incidents handled.
+- Completed tasks.
+- Pending work.
+- Blockers and escalations.
+- Important achievements.
+- Management remarks.
+
+### Weekly and Monthly Reports
+
+Includes:
+
+- Activities by date.
+- Project progress.
+- Task completion.
+- Incident trends.
+- Escalations.
+- Achievements.
+- Outstanding activities.
+- Recurring challenges.
+
+## 5.6 Report Integrity
+
+- Reports must be generated from saved system records.
+- Each export must display its reporting period and generation time.
+- Exports must respect user permissions.
+- Corrections must be auditable.
+- The system must prevent duplicate daily report submissions for the same employee and date unless explicitly configured.
+- Team reports must clearly identify missing submissions.
+- Templates must be configurable by authorized administrators.
+
+---
+
+# MODULE 4: PROJECT MANAGEMENT
+
+## 6.1 Purpose
+
+Provide a centralized way to manage departmental projects and monitor their progress.
+
+## 6.2 Project Fields
+
+- Project ID.
+- Project Name.
+- Description.
+- Business Objective.
+- Project Sponsor.
+- Project Manager.
+- Team Members.
+- Start Date.
+- Planned End Date.
+- Actual Completion Date.
+- Priority.
+- Status.
+- Progress Percentage.
+- Milestones.
+- Risks and Dependencies.
+- Supporting Documents.
+
+## 6.3 Project Statuses
+
+- PLANNED
+- NOT_STARTED
+- IN_PROGRESS
+- ON_HOLD
+- COMPLETED
+- CANCELLED
+
+## 6.4 Project Features
+
+- Create and edit projects.
+- Assign project managers and members.
+- Define milestones.
+- Link tasks to projects.
+- Link incidents to projects.
+- Link knowledge articles to projects.
+- Record progress updates.
+- Identify risks and blockers.
+- View project timeline.
+- Generate project reports.
+
+## 6.5 Project Workflow
+
+1. Authorized manager creates a project.
+2. Project objective and scope are documented.
+3. Project manager and members are assigned.
+4. Milestones are defined.
+5. Tasks are created and assigned.
+6. Staff members update progress.
+7. Daily activities can be linked to project tasks.
+8. Blockers can be escalated.
+9. Manager reviews project progress.
+10. Completed projects are archived with their documents and lessons learned.
+
+Progress should be calculated using a documented rule, preferably weighted task or milestone completion, rather than allowing arbitrary percentages without evidence.
+
+---
+
+# MODULE 5: TASK MANAGEMENT
+
+## 7.1 Purpose
+
+Allow managers and authorized staff to create, assign, monitor, and complete individual tasks.
+
+## 7.2 Task Fields
+
+- Task ID.
+- Title.
+- Description.
+- Project.
+- Assigned By.
+- Assigned To.
+- Start Date.
+- Due Date.
+- Priority.
+- Status.
+- Progress.
+- Dependencies.
+- Related Incident.
+- Supporting Attachments.
+- Completion Notes.
+
+## 7.3 Task Statuses
+
+- BACKLOG
+- TODO
+- IN_PROGRESS
+- BLOCKED
+- UNDER_REVIEW
+- COMPLETED
+- CANCELLED
+
+## 7.4 Task Workflow
+
+1. Manager creates a task.
+2. Task is assigned to a staff member.
+3. Assigned staff member reviews the task.
+4. Staff member updates its status and progress.
+5. Staff member records work in daily activities.
+6. If blocked, staff member raises an escalation.
+7. Once completed, the task is submitted for review when required.
+8. Authorized reviewer confirms completion.
+9. The task remains available in project history.
+
+## 7.5 Task Management Features
+
+- My Tasks.
+- Team Tasks.
+- Overdue Tasks.
+- Blocked Tasks.
+- Tasks by Project.
+- Task Comments.
+- Task History.
+- Task Attachments.
+- Task Dependencies.
+- Task Filters and Search.
+
+---
+
+# MODULE 6: ESCALATION MANAGEMENT
+
+## 8.1 Purpose
+
+Provide a formal mechanism to raise, track, assign, and resolve issues that require additional attention.
+
+Escalations can originate from:
+
+- Temenos incidents.
+- Project delays.
+- Blocked tasks.
+- External dependencies.
+- Technical risks.
+- Resource constraints.
+- Operational issues.
+
+## 8.2 Escalation Fields
+
+- Escalation ID.
+- Title.
+- Description.
+- Escalation Type.
+- Related Incident.
+- Related Project.
+- Related Task.
+- Raised By.
+- Current Owner.
+- Escalated To.
+- Escalation Level.
+- Reason.
+- Impact.
+- Date Raised.
+- Required Response Date.
+- Decision / Action.
+- Resolution.
+- Status.
+- Attachments.
+
+## 8.3 Escalation Levels
+
+Proposed configurable hierarchy:
+
+1. Team Lead.
+2. Department Manager.
+3. Head of Department.
+4. Other authorized management level.
+
+The hierarchy must be configurable according to the bank's actual organizational structure.
+
+## 8.4 Escalation Statuses
+
+- OPEN
+- ACKNOWLEDGED
+- UNDER_REVIEW
+- ACTION_REQUIRED
+- WAITING_FOR_RESPONSE
+- RESOLVED
+- CLOSED
+- REOPENED
+
+## 8.5 Escalation Workflow
+
+1. Staff member identifies a blocker or unresolved issue.
+2. Staff member raises an escalation.
+3. The system records the source record, reason, impact and required response date.
+4. Authorized recipient receives an in-app notification.
+5. Recipient acknowledges the escalation.
+6. Recipient records decisions or required actions.
+7. Responsible staff member updates progress.
+8. The escalation is resolved and reviewed.
+9. The complete escalation history remains available.
+
+## 8.6 Escalation Controls
+
+- Configurable response deadlines.
+- Overdue reminders.
+- Escalation history.
+- In-app notifications.
+- Management escalation dashboard.
+- Link to source incident, project or task.
+- Mandatory resolution notes before closure.
+
+Escalation must not duplicate the underlying incident or task. It is a separate record linked to the original work item.
+
+---
+
+# MODULE 7: DASHBOARD AND ANALYTICS
+
+## 9.1 Staff Dashboard
+
+Show:
+
+- My Tasks.
+- My Projects.
+- My Daily Activities.
+- My Open Incidents.
+- My Escalations.
+- Knowledge Articles I Created.
+- Pending Reviews.
+- Upcoming Deadlines.
+
+## 9.2 Team Lead Dashboard
+
+Show:
+
+- Total team members.
+- Daily report submission status.
+- Active projects.
+- Task progress.
+- Overdue tasks.
+- Open Temenos incidents.
+- Incidents awaiting Temenos.
+- Escalated issues.
+- Knowledge articles awaiting approval.
+- Team activity summary.
+
+## 9.3 Management Dashboard
+
+Show:
+
+- Monthly team activities.
+- Project completion.
+- Incident distribution.
+- Recurring root causes.
+- Escalation trends.
+- Knowledge contributions.
+- Daily report submission rate.
+- Outstanding blockers.
+- Historical trends.
+
+Dashboard figures must be calculated from actual records. The system must not present estimated or fabricated figures as actual achievements.
+
+---
+
+# 4. BUSINESS RULES
+
+## 10.1 General Rules
+
+1. Every important record has a unique identifier.
+2. Every record has creation and update timestamps.
+3. User ownership is recorded.
+4. Important changes are audited.
+5. Historical records must not be deleted casually.
+6. Related records must maintain referential integrity.
+7. Records must respect role and organizational permissions.
+8. All dates and timestamps must be stored consistently, preferably in UTC, and displayed in the configured local timezone.
+9. All exported reports must be based on authorized data.
+10. Required fields must be validated by the backend.
+
+## 10.2 Knowledge Rules
+
+- Only approved articles are generally visible in the published knowledge search.
+- Draft articles remain private to authorized users.
+- A knowledge article may be linked to multiple incidents.
+- A resolved incident may be linked to an existing article or used to create a new one.
+- Updating an approved article must preserve its previous version.
+
+## 10.3 Incident Rules
+
+- TSR reference must be unique where the Temenos case is unique.
+- Reopened incidents retain their previous history.
+- Closing an incident requires resolution information or an authorized exception.
+- Incident status changes are recorded.
+- An internal status must not be confused with the official Temenos status.
+
+## 10.4 Daily Reporting Rules
+
+- One employee may have one daily report per date.
+- One report can contain multiple activities.
+- Submitted reports are not silently overwritten.
+- Team reports are generated from individual submissions.
+- Missing submissions must be visible to authorized managers.
+
+## 10.5 Project and Task Rules
+
+- A task can belong to a project or exist independently.
+- A project can have multiple milestones and tasks.
+- Task completion and project completion are different states.
+- Overdue tasks are calculated from due dates and completion status.
+- Blocked tasks should support escalation.
+
+## 10.6 Escalation Rules
+
+- Every escalation must have a reason and responsible recipient.
+- Every escalation should be linked to its source record when applicable.
+- Closure requires a resolution or decision.
+- Escalation history cannot be silently deleted.
+- Overdue escalation notifications follow configurable rules.
+
+---
+
+# 5. DATABASE ARCHITECTURE
+
+## 11.1 Database Design Principles
+
+The platform will use PostgreSQL.
+
+The database should be normalized and organized by business domain.
+
+Recommended principles:
+
+- Use UUID primary keys.
+- Use foreign keys for relationships.
+- Use database constraints for important business rules.
+- Use indexes for frequently searched and filtered fields.
+- Use transactions for multi-record operations.
+- Use soft deletion where historical preservation is necessary.
+- Use explicit status values.
+- Store attachment metadata separately from attachment bytes.
+- Store sensitive audit information securely.
+- Avoid duplicating user, project and incident information in unrelated tables.
+
+## 11.2 Core Database Tables
+
+### A. Identity and Access
+
+| Table | Purpose |
+|---|---|
+| users | Staff accounts and profile information |
+| roles | Application roles |
+| permissions | Individual permissions |
+| user_roles | User-to-role relationships |
+| role_permissions | Role-to-permission relationships |
+| teams | Organizational teams, if required |
+| user_teams | Team memberships |
+| sessions | Active session management, if implemented separately |
+
+### B. Knowledge Management
+
+| Table | Purpose |
+|---|---|
+| knowledge_articles | Main knowledge records |
+| knowledge_categories | Article categories |
+| knowledge_versions | Article version history |
+| knowledge_comments | Article comments |
+| knowledge_feedback | Article usefulness feedback |
+| knowledge_tags | Searchable tags |
+| knowledge_article_tags | Article-to-tag relationships |
+| knowledge_article_links | Relationships between articles and other records |
+
+### C. Incident Management
+
+| Table | Purpose |
+|---|---|
+| incidents | Incident master records |
+| incident_comments | Internal comments |
+| incident_history | Status and assignment history |
+| incident_updates | Investigation and progress updates |
+| incident_categories | Configurable categories |
+| incident_root_causes | Root-cause classification |
+| incident_knowledge_links | Incident-to-knowledge relationships |
+
+### D. Daily Reporting
+
+| Table | Purpose |
+|---|---|
+| daily_reports | Individual daily report header |
+| daily_activities | Individual activities |
+| report_reviews | Review and approval history |
+| report_templates | Configurable export templates |
+| report_exports | Export generation metadata |
+
+### E. Project Management
+
+| Table | Purpose |
+|---|---|
+| projects | Project master records |
+| project_members | Project membership |
+| project_milestones | Project milestones |
+| project_updates | Progress updates |
+| project_risks | Risks and dependencies |
+
+### F. Task Management
+
+| Table | Purpose |
+|---|---|
+| tasks | Task master records |
+| task_comments | Task discussions |
+| task_history | Status and assignment history |
+| task_dependencies | Task dependency relationships |
+
+### G. Escalation
+
+| Table | Purpose |
+|---|---|
+| escalations | Escalation master records |
+| escalation_history | Escalation history |
+| escalation_actions | Decisions and actions |
+| escalation_levels | Configurable escalation levels |
+
+### H. Shared Services
+
+| Table | Purpose |
+|---|---|
+| attachments | Attachment metadata |
+| notifications | In-app notifications |
+| audit_logs | Important system activity |
+| system_settings | Configurable settings |
+| activity_logs | Selected business activity history |
+
+## 11.3 Main Entity Relationships
+
+```mermaid
+erDiagram
+    USERS ||--o{ KNOWLEDGE_ARTICLES : creates
+    USERS ||--o{ DAILY_REPORTS : submits
+    USERS ||--o{ INCIDENTS : owns
+    USERS ||--o{ TASKS : assigned
+    USERS ||--o{ PROJECTS : manages
+    USERS ||--o{ ESCALATIONS : raises
+
+    KNOWLEDGE_CATEGORIES ||--o{ KNOWLEDGE_ARTICLES : classifies
+    KNOWLEDGE_ARTICLES ||--o{ KNOWLEDGE_VERSIONS : versions
+    KNOWLEDGE_ARTICLES ||--o{ KNOWLEDGE_COMMENTS : receives
+
+    INCIDENTS ||--o{ INCIDENT_HISTORY : tracks
+    INCIDENTS ||--o{ INCIDENT_COMMENTS : discusses
+    INCIDENTS }o--o{ KNOWLEDGE_ARTICLES : references
+
+    DAILY_REPORTS ||--|{ DAILY_ACTIVITIES : contains
+    DAILY_ACTIVITIES }o--o| PROJECTS : relates
+    DAILY_ACTIVITIES }o--o| TASKS : relates
+    DAILY_ACTIVITIES }o--o| INCIDENTS : relates
+
+    PROJECTS ||--o{ PROJECT_MEMBERS : has
+    PROJECTS ||--o{ PROJECT_MILESTONES : contains
+    PROJECTS ||--o{ TASKS : contains
+
+    TASKS ||--o{ TASK_HISTORY : tracks
+
+    ESCALATIONS }o--o| INCIDENTS : concerns
+    ESCALATIONS }o--o| PROJECTS : concerns
+    ESCALATIONS }o--o| TASKS : concerns
+    ESCALATIONS ||--o{ ESCALATION_HISTORY : tracks
+
+    USERS ||--o{ AUDIT_LOGS : generates
+    USERS ||--o{ NOTIFICATIONS : receives
+```
+
+## 11.4 Important Relationships
+
+- One user can create many knowledge articles.
+- One knowledge article can have many versions and comments.
+- One incident can have many updates and status-history records.
+- An incident can reference multiple knowledge articles.
+- One user can submit multiple daily reports.
+- One daily report contains multiple activities.
+- A daily activity may reference a project, task or incident.
+- One project can have multiple milestones, members and tasks.
+- One task may have multiple dependencies.
+- One escalation may relate to an incident, project or task.
+- One user can receive many notifications.
+- Important actions create audit records.
+
+## 11.5 Suggested Key Constraints
+
+- Unique user email or username.
+- Unique incident TSR reference, subject to the source system's reference rules.
+- Unique daily report per user and report date.
+- Unique project code.
+- Unique article slug or article reference.
+- Foreign keys on all related business records.
+- Valid status values.
+- Non-negative hours spent.
+- Valid date ranges.
+- Prevent deleting referenced historical records.
+
+## 11.6 Search Architecture
+
+Use PostgreSQL search capabilities initially:
+
+- Full-text search for titles, descriptions and solutions.
+- `pg_trgm` for typo-tolerant matching.
+- GIN indexes for searchable text.
+- B-tree indexes for references, statuses, dates and foreign keys.
+
+Search priority:
+
+1. Exact TSR/reference match.
+2. Exact title/error match.
+3. Keyword and full-text match.
+4. Fuzzy and related match.
+
+Search must use server-side pagination and must not load all records into the browser.
+
+---
+
+# 6. APPLICATION ARCHITECTURE
+
+## 12.1 Proposed Technology Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js, React, TypeScript |
+| Styling | Existing project UI system / Tailwind CSS |
+| Backend | Next.js API routes and service layer |
+| Database | PostgreSQL |
+| Database access | Existing database layer, with reviewed migrations |
+| Authentication | Secure session-based authentication |
+| Authorization | Role-based and permission-based access |
+| File storage | Secure local/object storage abstraction |
+| Word generation | DOCX generation library |
+| PDF generation | PDF generation library |
+| Excel generation | XLSX generation library |
+| Validation | Shared server/client validation schemas |
+| Testing | Unit, integration and end-to-end testing |
+
+The implementation should extend the existing repository rather than create a second unrelated application.
+
+## 12.2 Application Layers
+
+### Presentation Layer
+
+Responsible for:
+- Pages.
+- Forms.
+- Tables.
+- Filters.
+- Dashboards.
+- Navigation.
+- Responsive design.
+
+### API Layer
+
+Responsible for:
+- Request validation.
+- Authentication.
+- Authorization.
+- Request/response handling.
+- Pagination.
+- Error responses.
+
+### Service Layer
+
+Responsible for:
+- Business rules.
+- Incident lifecycle.
+- Knowledge approval.
+- Report generation.
+- Task and project calculations.
+- Escalation logic.
+
+### Data Access Layer
+
+Responsible for:
+- PostgreSQL queries.
+- Transactions.
+- Database relationships.
+- Search queries.
+- Aggregations.
+
+### Shared Services
+
+Responsible for:
+- Authentication and authorization.
+- Notifications.
+- Attachments.
+- Audit logging.
+- Report export.
+- Search.
+
+---
+
+# 7. API DESIGN
+
+API routes should be organized by business module.
+
+## 13.1 Authentication
+
+- POST /api/auth/login
+- POST /api/auth/logout
+- GET /api/auth/me
+- POST /api/auth/change-password
+- PATCH /api/users/me
+
+## 13.2 Knowledge
+
+- GET /api/knowledge
+- POST /api/knowledge
+- GET /api/knowledge/:id
+- PATCH /api/knowledge/:id
+- POST /api/knowledge/:id/submit
+- POST /api/knowledge/:id/review
+- GET /api/knowledge/:id/versions
+- POST /api/knowledge/:id/comments
+- POST /api/knowledge/:id/feedback
+
+## 13.3 Incidents
+
+- GET /api/incidents
+- POST /api/incidents
+- GET /api/incidents/:id
+- PATCH /api/incidents/:id
+- POST /api/incidents/:id/assign
+- POST /api/incidents/:id/status
+- POST /api/incidents/:id/updates
+- POST /api/incidents/:id/comments
+- POST /api/incidents/:id/knowledge
+- GET /api/incidents/search
+
+## 13.4 Daily Reports
+
+- GET /api/daily-reports
+- POST /api/daily-reports
+- GET /api/daily-reports/:id
+- PATCH /api/daily-reports/:id
+- POST /api/daily-reports/:id/submit
+- POST /api/daily-reports/:id/review
+- POST /api/daily-reports/:id/activities
+- GET /api/reports/daily
+- GET /api/reports/team
+
+## 13.5 Report Exports
+
+- POST /api/reports/export/docx
+- POST /api/reports/export/pdf
+- POST /api/reports/export/xlsx
+
+Export requests must be validated and permission checked.
+
+## 13.6 Projects and Tasks
+
+- GET /api/projects
+- POST /api/projects
+- GET /api/projects/:id
+- PATCH /api/projects/:id
+- POST /api/projects/:id/milestones
+- GET /api/tasks
+- POST /api/tasks
+- GET /api/tasks/:id
+- PATCH /api/tasks/:id
+- POST /api/tasks/:id/assign
+- POST /api/tasks/:id/status
+
+## 13.7 Escalations
+
+- GET /api/escalations
+- POST /api/escalations
+- GET /api/escalations/:id
+- PATCH /api/escalations/:id
+- POST /api/escalations/:id/acknowledge
+- POST /api/escalations/:id/actions
+- POST /api/escalations/:id/resolve
+- POST /api/escalations/:id/close
+
+## 13.8 Administration
+
+- GET /api/admin/users
+- POST /api/admin/users
+- PATCH /api/admin/users/:id
+- GET /api/admin/roles
+- GET /api/admin/permissions
+- GET /api/admin/audit-logs
+- GET /api/admin/settings
+
+These are proposed API contracts. Existing routes should be audited before adding or renaming endpoints.
+
+---
+
+# 8. NON-FUNCTIONAL REQUIREMENTS
+
+## 14.1 Performance
+
+- Normal page navigation should be responsive.
+- Search should return results without requiring a separate search button.
+- Use pagination, initially 15 incidents per page.
+- Avoid loading all database records in the browser.
+- Avoid N+1 database queries.
+- Use indexes for frequent filters.
+- Generate large reports asynchronously if required.
+
+## 14.2 Security
+
+- Use secure password hashing.
+- Protect sessions with secure cookie settings appropriate to deployment.
+- Enforce authorization on the backend.
+- Validate all incoming data.
+- Prevent SQL injection.
+- Prevent cross-site scripting.
+- Apply CSRF protections where required by the authentication architecture.
+- Restrict file types and sizes.
+- Store uploaded files outside publicly accessible directories or in private object storage.
+- Check file authorization before download.
+- Record sensitive administrative actions.
+- Protect secrets using environment variables.
+- Apply rate limiting to sensitive endpoints.
+- Use HTTPS in production.
+
+## 14.3 Availability and Reliability
+
+- Implement database backups.
+- Document restore procedures.
+- Test backup restoration.
+- Use database transactions for important operations.
+- Handle failures without losing user-submitted information.
+- Provide useful error messages.
+- Maintain application and database logs.
+
+## 14.4 Usability
+
+- Professional Tsehay Bank branding.
+- Primary color: #215b30.
+- Secondary color: #fec80c.
+- Clear navigation.
+- Consistent forms and tables.
+- Responsive desktop and mobile layouts.
+- Accessible contrast and typography.
+- Simple workflows.
+- Useful empty states and validation messages.
+
+## 14.5 Maintainability
+
+- Read and follow AGENTS.md before each coding session.
+- Maintain clear module boundaries.
+- Use database migrations.
+- Avoid duplicated business logic.
+- Keep TypeScript types consistent.
+- Document important architecture decisions.
+- Add tests for business rules.
+- Update AGENTS.md when permanent project conventions or architecture change.
+
+---
+
+# 9. NOTIFICATIONS
+
+## 15.1 Initial Notifications
+
+In-app notifications should be generated for:
+
+- New task assignments.
+- Task due dates.
+- Overdue tasks.
+- New incident assignments.
+- Incident status changes.
+- Incident follow-up dates.
+- Escalations raised.
+- Escalations assigned.
+- Escalation acknowledgements.
+- Knowledge article review requests.
+- Knowledge article approval or rejection.
+- Daily report submission and return.
+- Project milestone changes.
+
+## 15.2 Future Notifications
+
+Email or other approved channels can be added later.
+
+The initial release should not depend on external notification services.
+
+---
+
+# 10. REPORTING AND PERFORMANCE INDICATORS
+
+## 16.1 Operational Reports
+
+- Daily individual activities.
+- Consolidated team daily report.
+- Weekly team activity report.
+- Monthly team activity report.
+- Incident status report.
+- Incident owner report.
+- Incident waiting-for-Temenos report.
+- Escalation report.
+- Overdue task report.
+- Project progress report.
+- Knowledge contribution report.
+- Knowledge approval report.
+
+## 16.2 Suggested KPIs
+
+| KPI | Calculation |
+|---|---|
+| Daily report submission rate | Submitted reports / Expected reports × 100 |
+| Task completion rate | Completed tasks / Tasks due in period × 100 |
+| Overdue task count | Number of incomplete tasks past due date |
+| Incident resolution rate | Resolved incidents / Incidents eligible for resolution measurement × 100 |
+| Average internal resolution time | Internal handling time / Resolved incidents |
+| Escalation closure rate | Closed escalations / Escalations due or raised in period × 100 |
+| Knowledge approval rate | Approved articles / Articles submitted for review × 100 |
+| Knowledge contribution | Number of articles created and approved |
+| Project progress | Weighted completed milestones or tasks |
+| Repeat incident rate | Recurring incidents / Eligible incidents × 100 |
+
+KPI definitions and reporting periods must be agreed with management. The system should not calculate misleading percentages using incomplete or inconsistent source data.
+
+---
+
+# 11. HISTORICAL DATA MIGRATION
+
+## 17.1 Existing Incident Knowledge Base
+
+The existing project contains historical Temenos incident information imported from Excel.
+
+The migration must preserve:
+
+- Original TSR reference.
+- Original title/summary.
+- Historical dates.
+- Group classification.
+- Subgroup classification.
+- Root-cause information where available.
+- Existing solution information where available.
+- Original source references.
+
+## 17.2 Migration Strategy
+
+1. Back up the existing database.
+2. Audit existing tables and relationships.
+3. Create the new schema through migrations.
+4. Map existing incident records to the new incident model.
+5. Preserve historical fields.
+6. Assign the correct groups and subgroups.
+7. Identify missing or invalid fields.
+8. Check for duplicates.
+9. Run a test migration.
+10. Compare source and destination record counts.
+11. Verify representative records.
+12. Perform production migration after approval.
+
+Do not fabricate historical solutions or root causes where the original Excel does not provide them.
+
+## 17.3 Migration Acceptance
+
+- All 237 original historical incident records are accounted for.
+- No TSR references are lost.
+- Group/subgroup relationships are valid.
+- Existing incident details remain available.
+- Historical dates are preserved.
+- Duplicate handling is documented.
+- Migration errors are reported for review.
+
+---
+
+# 12. TESTING AND ACCEPTANCE CRITERIA
+
+## 18.1 Authentication and Permissions
+
+- Users can log in and log out.
+- Sessions behave correctly.
+- Unauthorized users cannot access restricted API endpoints.
+- Users cannot change their own roles.
+- Users cannot modify another user's profile without permission.
+- Role changes are audited.
+
+## 18.2 Knowledge Management
+
+- Staff can create and save draft articles.
+- Articles can be submitted for review.
+- Reviewers can approve or reject articles.
+- Approved articles appear in search.
+- Article versions are preserved.
+- Comments and feedback work.
+- Attachments are protected.
+
+## 18.3 Incident Management
+
+- Staff can manually register a Temenos incident.
+- Duplicate TSR references are handled correctly.
+- Incident assignment works.
+- Status history is maintained.
+- Internal investigation updates can be recorded.
+- Escalations can be created.
+- Resolved incidents can be linked to knowledge articles.
+- Search returns correct results.
+
+## 18.4 Daily Reporting
+
+- Staff can create daily activities.
+- Multiple activities can be stored in one daily report.
+- Staff can submit reports.
+- Managers can review and return reports.
+- Consolidated reports contain correct activities.
+- DOCX, PDF and XLSX exports open correctly.
+- Unauthorized users cannot download restricted reports.
+
+## 18.5 Project and Task Management
+
+- Projects can be created.
+- Members can be assigned.
+- Milestones can be defined.
+- Tasks can be assigned.
+- Task progress is tracked.
+- Overdue tasks are identified.
+- Project progress reflects actual task/milestone data.
+
+## 18.6 Escalation
+
+- Staff can raise escalations.
+- Escalations can reference incidents, projects or tasks.
+- Recipients can acknowledge escalations.
+- Decisions and actions are recorded.
+- Overdue escalations are identified.
+- Closure requires resolution information.
+
+## 18.7 Performance and Security
+
+- Search remains responsive with realistic data volume.
+- Pagination works.
+- No N+1 query problems are introduced.
+- File access is permission checked.
+- Audit logs are created.
+- Backup and restoration are tested.
+- Production secrets are not exposed.
+
+---
+
+# 13. IMPLEMENTATION ROADMAP
+
+## Phase 0 — Project Audit and Architecture
+
+**Deliverables:**
+- Review current repository.
+- Read AGENTS.md.
+- Review existing Next.js architecture.
+- Audit PostgreSQL schema.
+- Audit authentication and RBAC.
+- Review existing 237 historical incidents.
+- Identify reusable code.
+- Prepare database migration strategy.
+- Prepare updated architecture documentation.
+
+**Exit criteria:** Existing system and migration risks are understood and documented.
+
+## Phase 1 — Foundation
+
+**Deliverables:**
+- Authentication and sessions.
+- User profiles.
+- Role and permission management.
+- Team management.
+- Navigation and dashboard foundation.
+- Audit logging.
+- Notification foundation.
+- Shared attachment service.
+
+**Exit criteria:** Users can securely access authorized modules.
+
+## Phase 2 — Knowledge Management
+
+**Deliverables:**
+- Knowledge categories.
+- Article creation and editing.
+- Article workflow.
+- Review and approval.
+- Version history.
+- Comments and feedback.
+- Attachments.
+- Search.
+- Historical incident knowledge integration.
+
+**Exit criteria:** Staff can create, review, publish and reuse technical knowledge.
+
+## Phase 3 — Temenos Incident Management
+
+**Deliverables:**
+- Manual TSR registration.
+- Incident assignment.
+- Status lifecycle.
+- Investigation updates.
+- Temenos follow-up tracking.
+- Attachments and comments.
+- Incident search.
+- Historical incident migration.
+- Link incidents to knowledge.
+
+**Exit criteria:** The team can manage internal handling of Temenos cases.
+
+## Phase 4 — Daily Activities and Reporting
+
+**Deliverables:**
+- Individual daily reports.
+- Multiple activities per report.
+- Submission and review workflow.
+- Consolidated team reporting.
+- DOCX export.
+- PDF export.
+- XLSX export.
+- Weekly and monthly reporting.
+
+**Exit criteria:** Staff can submit daily work and managers can generate consolidated reports.
+
+## Phase 5 — Projects and Tasks
+
+**Deliverables:**
+- Project creation.
+- Project members.
+- Milestones.
+- Task creation and assignment.
+- Task dependencies.
+- Progress tracking.
+- Overdue indicators.
+- Project reporting.
+
+**Exit criteria:** The department can coordinate projects and individual work.
+
+## Phase 6 — Escalation Management
+
+**Deliverables:**
+- Escalation creation.
+- Escalation levels.
+- Assignment and acknowledgement.
+- Escalation actions.
+- Response deadlines.
+- Notifications.
+- Escalation reporting.
+
+**Exit criteria:** Internal blockers and Temenos-related issues can be formally escalated and tracked.
+
+## Phase 7 — Analytics and Management Reporting
+
+**Deliverables:**
+- Management dashboard.
+- Team activity analytics.
+- Incident trends.
+- Project progress analytics.
+- Escalation trends.
+- Knowledge contribution analytics.
+- KPI reports.
+
+**Exit criteria:** Management can review reliable operational information.
+
+## Phase 8 — UAT, Security and Production
+
+**Deliverables:**
+- Unit tests.
+- Integration tests.
+- End-to-end tests.
+- Permission testing.
+- Performance testing.
+- Security review.
+- UAT.
+- User documentation.
+- Administrator documentation.
+- Deployment documentation.
+- Backup and restore procedures.
+- Production deployment.
+- Team handover.
+
+**Exit criteria:** The system is accepted, documented, deployable and supportable.
+
+---
+
+# 14. PROJECT GOVERNANCE AND DEVELOPMENT RULES
+
+## 19.1 Development Principles
+
+1. Extend the existing application; do not rewrite it without a documented reason.
+2. Do not implement every module in one development session.
+3. Build one module at a time.
+4. Complete database and API design before implementing complex UI workflows.
+5. Maintain backward compatibility with existing historical records.
+6. Use migrations instead of manual database changes.
+7. Test existing functionality after every major change.
+8. Enforce authorization in the backend.
+9. Do not invent historical information.
+10. Keep the user interface simple and consistent.
+
+## 19.2 Agent Workflow
+
+Before every development session:
+
+1. Read AGENTS.md.
+2. Read the system SRS.
+3. Review current implementation and existing architecture.
+4. Identify the exact module and task.
+5. Inspect existing database and APIs before changing them.
+6. Prepare an implementation plan.
+7. Implement the smallest complete feature.
+8. Run relevant tests.
+9. Review security and backward compatibility.
+10. Update documentation.
+11. Update AGENTS.md when permanent project conventions or architecture change.
+12. Summarize files changed, migrations, tests and remaining issues.
+
+## 19.3 Documentation Structure
+
+Recommended:
+
+```text
+docs/
+├── SRS.md
+├── ARCHITECTURE.md
+├── DATABASE_DESIGN.md
+├── API_SPECIFICATION.md
+├── WORKFLOWS.md
+├── SECURITY.md
+├── TEST_PLAN.md
+├── DEPLOYMENT.md
+├── USER_GUIDE.md
+├── ADMIN_GUIDE.md
+└── decisions/
+    ├── 001-system-modules.md
+    ├── 002-database-architecture.md
+    └── 003-authentication-and-rbac.md
+```
+
+---
+
+# 15. FINAL PROJECT SUCCESS CRITERIA
+
+Core Systems Hub will be considered successfully delivered when:
+
+1. Staff can securely access the system according to their roles.
+2. Staff can create and share technical knowledge.
+3. Knowledge articles can be reviewed and approved.
+4. Historical Temenos incidents are preserved.
+5. New Temenos incidents can be manually registered and tracked.
+6. Incidents can be connected to reusable solutions.
+7. Staff can submit individual daily reports.
+8. The system can generate individual and consolidated team reports in Word, PDF and Excel.
+9. Projects and tasks can be managed.
+10. Staff can raise and track escalations.
+11. Managers can view team and operational dashboards.
+12. Important actions are audited.
+13. UAT and security tests pass.
+14. Production deployment and backup procedures are documented.
+15. Users receive appropriate training and handover documentation.
+
+---
+
+# 16. CONCLUSION
+
+Core Systems Hub is intended to become the central operational and technical knowledge platform for the Core Systems team.
+
+Its value is not just that it stores records. It connects the team's work:
+
+- Knowledge explains how work is performed.
+- Incident Management records external Temenos issues and internal resolution.
+- Daily Reporting records what staff accomplish.
+- Project and Task Management organize what needs to be done.
+- Escalation Management ensures blockers receive attention.
+- Analytics helps management understand progress and recurring problems.
+
+The platform should be developed incrementally, with Knowledge Management, Temenos Incident Management and Daily Reporting as the first major business capabilities.
+
+The final implementation must remain secure, maintainable, easy to use and compatible with the bank's operational requirements.
+
+
+
+
+promp
+# Core Systems Hub – Project Assessment and Implementation
+
+I want to evolve the existing **TCSP Incident Knowledge Base** into a unified internal platform called **Core Systems Hub** for Tsehay Bank's Core Systems team.
+
+## Main Modules
+
+1. **Knowledge Management:** Allow every staff member to document projects, tasks, technical procedures, configurations, problems, solutions, implementation steps, and lessons learned. Support article review, approval, comments, attachments, version history, and search.
+
+2. **Temenos Incident Management:** Allow staff to manually register incidents from the Temenos support portal, assign internal owners, track status, investigation, follow-ups, resolution, and escalation. Link resolved incidents to reusable knowledge articles.
+
+3. **Daily Activities & Reporting:** Allow each staff member to submit individual daily reports containing multiple activities. Support manager review and automatically generate individual and consolidated daily, weekly, and monthly reports in DOCX, PDF, and XLSX.
+
+4. **Project Management:** Create projects, assign project managers and members, define milestones, track progress, risks, and project documents.
+
+5. **Task Management:** Create and assign tasks, set priorities and deadlines, track progress, dependencies, completion, and blockers.
+
+6. **Escalation Management:** Allow staff to escalate Temenos incidents, blocked tasks, project delays, and other issues. Track escalation levels, responsible persons, actions, deadlines, decisions, and resolution.
+
+7. **Dashboard & Analytics:** Provide role-based dashboards, team activity summaries, incident trends, project progress, overdue tasks, escalations, knowledge contributions, and management reports.
+
+## Instructions
+
+**First, do not start coding immediately.**
+
+1. Read `AGENTS.md` and all relevant project documentation.
+2. Understand the original project purpose and inspect the existing Next.js and PostgreSQL implementation.
+3. Audit the existing database, APIs, authentication, RBAC, UI, and historical incident data.
+4. Identify reusable functionality, missing features, technical problems, and migration risks.
+5. Compare the existing implementation against the proposed Core Systems Hub requirements.
+6. Prepare a phased implementation plan, database architecture, and prioritized development backlog.
+
+## Important Requirements
+
+- Extend the existing application; do not rewrite it unnecessarily.
+- Preserve all 237 historical incident records and their original information.
+- Keep incidents, knowledge articles, daily activities, projects, tasks, and escalations as separate but interconnected entities.
+- Use secure backend-enforced role-based permissions.
+- Maintain audit history, data integrity, and protected attachments.
+- Support individual and consolidated report exports in DOCX, PDF, and XLSX.
+- Use PostgreSQL, Next.js, React, and TypeScript consistently with the existing architecture.
+- Maintain professional Tsehay Bank branding: primary `#215b30`, secondary `#fec80c`.
+- Prioritize simple navigation, readable typography, responsive layouts, and good performance.
+- Do not fabricate historical data or business metrics.
+- Use database migrations and test existing functionality after changes.
+
+## Development Workflow
+
+After completing the assessment, implement the approved plan incrementally, one module at a time.
+
+For every development session:
+- Read `AGENTS.md` first.
+- Understand the existing architecture before modifying code.
+- Make focused changes.
+- Run relevant tests, type checks, linting, and builds.
+- Check security, permissions, and backward compatibility.
+- Update documentation and `AGENTS.md` when permanent architecture or development rules change.
+
+## Expected First Deliverable
+
+Produce an **Architecture and Gap Assessment** containing:
+
+1. Current system architecture.
+2. Existing functionality that can be reused.
+3. Missing functionality for each module.
+4. Database changes and migration strategy.
+5. Authentication and RBAC gaps.
+6. Security and performance concerns.
+7. Recommended implementation phases.
+8. Prioritized development backlog.
+
+Do not make destructive database changes or begin large-scale implementation before presenting the assessment.
+
+**The objective is to evolve the existing Incident Knowledge Base into a secure, maintainable Core Systems Hub without losing existing functionality or historical data.**
