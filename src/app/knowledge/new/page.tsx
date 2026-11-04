@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/components/AuthProvider";
 
 interface Group {
   id: number;
@@ -17,13 +18,23 @@ interface Subtype {
   group_id: number;
 }
 
+interface Category {
+  id: number;
+  code: string;
+  name: string;
+  description: string;
+}
+
 function AddKnowledgeForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fromIncidentId = searchParams.get("from_incident");
+  const { hasPermission } = useAuth();
+
   const [groups, setGroups] = useState<Group[]>([]);
   const [subtypes, setSubtypes] = useState<Subtype[]>([]);
   const [filteredSubtypes, setFilteredSubtypes] = useState<Subtype[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [loadingIncident, setLoadingIncident] = useState(!!fromIncidentId);
@@ -42,24 +53,26 @@ function AddKnowledgeForm() {
     verification: "",
     temenos_contact: "",
     notes: "",
+    status: "draft",
   });
 
   useEffect(() => {
     Promise.all([
       fetch("/api/groups").then((r) => r.json()),
-      // If from_incident is set, also fetch the incident data
+      fetch("/api/knowledge/categories").then((r) => r.json()),
       fromIncidentId
         ? fetch(`/api/incidents/${fromIncidentId}`).then((r) => r.json())
         : Promise.resolve(null),
     ])
-      .then(([groupsData, incidentData]) => {
+      .then(([groupsData, catData, incidentData]) => {
         setGroups(groupsData || []);
+        if (catData?.categories) setCategories(catData.categories);
         if (incidentData && !incidentData.error) {
-          // Pre-fill form from incident data
           const matchedGroup = (groupsData || []).find(
             (g: Group) => g.code === incidentData.group_code || g.id === incidentData.group_id
           );
-          setForm({
+          setForm((prev) => ({
+            ...prev,
             title: incidentData.summary || "",
             reference: incidentData.reference || "",
             group_id: matchedGroup ? String(matchedGroup.id) : "",
@@ -73,7 +86,7 @@ function AddKnowledgeForm() {
             verification: incidentData.verification || "",
             temenos_contact: incidentData.temenos_contact || "",
             notes: incidentData.notes || "",
-          });
+          }));
         }
       })
       .catch(console.error)
@@ -95,97 +108,95 @@ function AddKnowledgeForm() {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async (targetStatus: "draft" | "submitted" | "approved") => {
     setSaving(true);
     setError("");
 
     try {
+      const payload = { ...form, status: targetStatus };
       const res = await fetch("/api/knowledge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Failed to save");
+        setError(data.error || "Failed to save article");
         return;
       }
       router.push(`/knowledge/${data.id}`);
     } catch (err: any) {
-      setError(err.message || "Failed to save");
+      setError(err.message || "Failed to save article");
     } finally {
       setSaving(false);
     }
   };
 
-  const fieldClass = "w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none";
+  const canApprove = hasPermission("knowledge.approve");
+  const fieldClass = "w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white focus:ring-1 focus:ring-green-600 outline-none";
   const textAreaClass = `${fieldClass} min-h-[80px] resize-y`;
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="max-w-4xl space-y-6">
       <div>
-        <Link href="/knowledge" className="text-sm text-blue-600 hover:underline mb-2 inline-block">
+        <Link href="/knowledge" className="text-xs text-gray-500 hover:underline mb-2 inline-block">
           ← Knowledge Articles
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900">Add Historical Incident</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Create Knowledge Article</h1>
         {fromIncidentId ? (
-          <p className="text-sm text-gray-500 mt-1">
-            Creating knowledge article from incident {form.reference || fromIncidentId}. Fields are pre-filled — review and edit before saving.
+          <p className="text-xs text-gray-500 mt-1">
+            Converting resolved incident <span className="font-mono font-bold text-gray-700">{form.reference}</span> into reusable knowledge. Fields are pre-filled — review and submit.
           </p>
         ) : (
-          <p className="text-sm text-gray-500 mt-1">
-            Record a newly solved incident into the knowledge archive
+          <p className="text-xs text-gray-500 mt-1">
+            Document technical procedures, system configurations, or solutions to recurring problems
           </p>
         )}
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">
+        <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg p-3">
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Ticket Reference */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-            Incident Identification
+      <div className="space-y-6">
+        {/* Article Identification */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4 shadow-sm">
+          <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+            1. Article Identification & Classification
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Ticket Reference *</label>
-              <input
-                type="text"
-                value={form.reference}
-                onChange={(e) => update("reference", e.target.value)}
-                placeholder="TSR-XXXXXXXX"
-                required
-                className={fieldClass}
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Title *</label>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Article Title *</label>
               <input
                 type="text"
                 value={form.title}
                 onChange={(e) => update("title", e.target.value)}
-                placeholder="Brief description of the issue"
+                placeholder="e.g. Resolution for AA.CREATE.NAU.ACTIVITIES Lockup During EOD"
                 required
                 className={fieldClass}
               />
             </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Group *</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Related TSR Reference</label>
+              <input
+                type="text"
+                value={form.reference}
+                onChange={(e) => update("reference", e.target.value)}
+                placeholder="TSR-XXXXXXX (Optional)"
+                className={fieldClass}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Technical Domain (Group) *</label>
               <select
                 value={form.group_id}
                 onChange={(e) => update("group_id", e.target.value)}
                 required
                 className={fieldClass}
               >
-                <option value="">Select group...</option>
+                <option value="">Select technical domain...</option>
                 {groups.map((g) => (
                   <option key={g.id} value={g.id}>
                     {g.code} — {g.name}
@@ -194,14 +205,14 @@ function AddKnowledgeForm() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Sub-Type</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Subgroup Taxonomy</label>
               <select
                 value={form.subtype_id}
                 onChange={(e) => update("subtype_id", e.target.value)}
                 className={fieldClass}
                 disabled={!form.group_id}
               >
-                <option value="">Select sub-type...</option>
+                <option value="">Select subgroup...</option>
                 {filteredSubtypes.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.code} — {s.name}
@@ -212,131 +223,169 @@ function AddKnowledgeForm() {
           </div>
         </div>
 
-        {/* Problem / Solution — SRS §16 */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-            Problem & Solution
+        {/* Problem & Diagnosis */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4 shadow-sm">
+          <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+            2. Problem Description & Diagnosis
           </h2>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Problem / Symptoms</label>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Problem / Symptoms Observed *</label>
             <textarea
               value={form.symptoms}
               onChange={(e) => update("symptoms", e.target.value)}
-              placeholder="What happened? Describe the symptoms and error messages..."
+              placeholder="Describe what occurred, error messages, affected applications, and impact..."
               className={textAreaClass}
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Root Cause</label>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Root Cause Analysis</label>
             <textarea
               value={form.root_cause}
               onChange={(e) => update("root_cause", e.target.value)}
-              placeholder="Why did it happen?"
+              placeholder="Underlying technical cause (e.g. record lock, index fragmentation, routine defect)..."
               className={textAreaClass}
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Diagnostic Information</label>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Diagnostic Commands & Logs</label>
             <textarea
               value={form.diagnostic_data}
               onChange={(e) => update("diagnostic_data", e.target.value)}
-              placeholder="What commands, logs, or data were used to identify the issue?"
+              placeholder="Commands, SQL queries, jBASE commands, or log paths used to isolate the issue..."
               className={textAreaClass}
             />
           </div>
+        </div>
+
+        {/* Resolution & Prevention */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4 shadow-sm">
+          <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+            3. Solution & Prevention
+          </h2>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Immediate Fix</label>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Immediate Workaround / Quick Fix</label>
             <textarea
               value={form.immediate_fix}
               onChange={(e) => update("immediate_fix", e.target.value)}
-              placeholder="What fixed the specific incident?"
+              placeholder="Step-by-step actions taken to restore service immediately..."
               className={textAreaClass}
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Permanent Fix</label>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Permanent Solution / Fix</label>
             <textarea
               value={form.permanent_fix}
               onChange={(e) => update("permanent_fix", e.target.value)}
-              placeholder="How should the underlying problem be fixed?"
+              placeholder="Long-term fix, patch, configuration update, or code revision..."
               className={textAreaClass}
             />
           </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Prevention</label>
-            <textarea
-              value={form.prevention}
-              onChange={(e) => update("prevention", e.target.value)}
-              placeholder="How can we avoid this happening again?"
-              className={textAreaClass}
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Verification</label>
-            <textarea
-              value={form.verification}
-              onChange={(e) => update("verification", e.target.value)}
-              placeholder="How do we know the solution worked?"
-              className={textAreaClass}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Preventative Safeguards</label>
+              <textarea
+                value={form.prevention}
+                onChange={(e) => update("prevention", e.target.value)}
+                placeholder="Monitoring, alerts, or procedural checks to prevent recurrence..."
+                className={textAreaClass}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Verification Checklist</label>
+              <textarea
+                value={form.verification}
+                onChange={(e) => update("verification", e.target.value)}
+                placeholder="One checklist item per line (e.g. ✓ Verified balance, ✓ COB completed)..."
+                className={textAreaClass}
+              />
+            </div>
           </div>
         </div>
 
-        {/* Additional info */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-            Additional Information
+        {/* Additional Reference Details */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4 shadow-sm">
+          <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+            4. Support Contacts & Documentation
           </h2>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Temenos Contact</label>
-            <input
-              type="text"
-              value={form.temenos_contact}
-              onChange={(e) => update("temenos_contact", e.target.value)}
-              placeholder="Temenos support contact if applicable"
-              className={fieldClass}
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Notes</label>
-            <textarea
-              value={form.notes}
-              onChange={(e) => update("notes", e.target.value)}
-              placeholder="Any additional notes or context"
-              className={textAreaClass}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Temenos Support Engineer / Reference</label>
+              <input
+                type="text"
+                value={form.temenos_contact}
+                onChange={(e) => update("temenos_contact", e.target.value)}
+                placeholder="Temenos case engineer or contact"
+                className={fieldClass}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Additional Internal Notes</label>
+              <textarea
+                value={form.notes}
+                onChange={(e) => update("notes", e.target.value)}
+                placeholder="Any special remarks or lessons learned..."
+                className={textAreaClass}
+              />
+            </div>
           </div>
         </div>
 
-        {/* Submit */}
-        <div className="flex justify-end gap-3">
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
           <Link
             href="/knowledge"
-            className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="px-4 py-2 text-xs font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             Cancel
           </Link>
-          <button
-            type="submit"
-            disabled={saving || !form.title || !form.reference || !form.group_id}
-            className="px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {saving ? "Saving..." : "Save to Knowledge Archive"}
-          </button>
+
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => handleSave("draft")}
+              disabled={saving || !form.title || !form.group_id}
+              className="px-4 py-2 border border-gray-300 bg-white text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              {saving ? "Saving..." : "Save as Draft"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSave("submitted")}
+              disabled={saving || !form.title || !form.group_id}
+              className="px-5 py-2 text-white text-xs font-semibold rounded-lg shadow-sm disabled:opacity-50 transition-colors"
+              style={{ backgroundColor: "var(--primary)" }}
+            >
+              {saving ? "Submitting..." : "Submit for Review →"}
+            </button>
+
+            {canApprove && (
+              <button
+                type="button"
+                onClick={() => handleSave("approved")}
+                disabled={saving || !form.title || !form.group_id}
+                className="px-4 py-2 bg-green-800 text-white text-xs font-semibold rounded-lg hover:bg-green-900 shadow-sm disabled:opacity-50 transition-colors"
+              >
+                Publish Directly
+              </button>
+            )}
+          </div>
         </div>
-      </form>
+      </div>
     </div>
   );
 }
 
 export default function AddKnowledgePage() {
   return (
-    <Suspense fallback={
-      <div className="max-w-3xl space-y-6">
-        <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse" />
-        <div className="h-64 bg-gray-100 rounded-xl border border-gray-200 animate-pulse" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="max-w-4xl space-y-6">
+          <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse" />
+          <div className="h-64 bg-gray-100 rounded-xl border border-gray-200 animate-pulse" />
+        </div>
+      }
+    >
       <AddKnowledgeForm />
     </Suspense>
   );

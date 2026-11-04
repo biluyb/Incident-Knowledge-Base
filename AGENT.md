@@ -295,6 +295,28 @@ The search engine handles common misspellings by:
 
 ## 12. Recent Changes
 
+### 2026-11-04 — Core Systems Hub Evolution: Phase 1 (Foundation & RBAC) & Phase 2 (Knowledge Management)
+
+Evolved the platform from TCSP Incident Knowledge Base into **Core Systems Hub** for Tsehay Bank:
+
+**Phase 1: Foundation & RBAC Upgrade**
+- Upgraded RBAC to 5 roles: admin, team_lead (Manager), knowledge_manager, contributor, viewer.
+- Expanded permission matrix in src/lib/permissions.ts across all Hub modules.
+- Rebranded navigation in src/components/Navigation.tsx to Core Systems Hub with navigation links for Daily Activities, Tasks, Projects, and Escalations.
+- Fixed transaction() database helper in src/lib/db.ts to execute operations inside dedicated client boundary.
+- Authored idempotent database migration scripts/migrate-core-systems-hub-foundation.sql for all domain tables and safe FKs.
+- Created migration runner scripts/migrate-core-systems-hub.ts.
+
+**Phase 2: Knowledge Management Workflow & Review Gate**
+- Implemented article lifecycle state machine: draft -> submitted -> under_review -> approved -> rejected -> archived.
+- Created Knowledge Review & Approval Queue page (/knowledge/review) for Team Leads and Knowledge Managers.
+- Implemented /api/knowledge/[id]/submit and /api/knowledge/[id]/review endpoints.
+- Implemented /api/knowledge/[id]/versions and automated version snapshotting upon approving edits.
+- Enhanced /knowledge/new with Save as Draft, Submit for Review, and category selection.
+- Enhanced /knowledge/[id] with review decision banners, lifecycle status tags, and revision history.
+- Enhanced /knowledge/[id]/edit with change summary capture for version tracking.
+
+
 ### 2026-08-21 — Incident Detail Redesign: Solution-First Architecture
 
 Redesigned Incident Detail page to prioritize SOLUTION over metadata:
