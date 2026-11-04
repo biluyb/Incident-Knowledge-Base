@@ -307,6 +307,16 @@ Evolved the platform from TCSP Incident Knowledge Base into **Core Systems Hub**
 - Authored idempotent database migration scripts/migrate-core-systems-hub-foundation.sql for all domain tables and safe FKs.
 - Created migration runner scripts/migrate-core-systems-hub.ts.
 
+**Phase 3: Temenos Incident Management Enhancement**
+- Enhanced incident model with internal ownership (assigned_to, internal_owner), official Temenos status (temenos_status), and follow-up tracking (follow_up_date, temenos_reported_date).
+- Preserved all 237 historical incidents without data loss.
+- Implemented incident_history table and timeline logging on reassignments and status transitions.
+- Added /api/incidents/[id]/assign and /api/incidents/[id]/status endpoints.
+- Created 1-click Convert to Knowledge Article action linking resolved incidents to knowledge authoring.
+- Enhanced /incidents listing with status filter tabs (Active, Waiting for Temenos, Resolved, Closed) and owner display.
+- Enhanced /incidents/new and /incidents/[id]/edit with full priority, severity, status, owner assignment, and follow-up date management.
+- Enhanced /incidents/[id] with internal handling cards, status history timeline, and inline assignment/status modals.
+
 **Phase 2: Knowledge Management Workflow & Review Gate**
 - Implemented article lifecycle state machine: draft -> submitted -> under_review -> approved -> rejected -> archived.
 - Created Knowledge Review & Approval Queue page (/knowledge/review) for Team Leads and Knowledge Managers.

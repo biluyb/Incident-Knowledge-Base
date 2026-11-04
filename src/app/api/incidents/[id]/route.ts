@@ -16,13 +16,20 @@ export async function GET(
   }
 
   try {
-    // Try by reference first (exact match, case-insensitive, trimmed)
-    let ticket = await queryOne(`
-      SELECT t.*, g.code as group_code, g.name as group_name, g.description as group_description,
-             s.name as subgroup_name, s.code as subgroup_code, s.description as subgroup_description
+    const baseQuery = `
+      SELECT t.*, 
+             g.code as group_code, g.name as group_name, g.description as group_description,
+             s.name as subgroup_name, s.code as subgroup_code, s.description as subgroup_description,
+             u.name as assigned_to_name, u.email as assigned_to_email
       FROM tickets t
       LEFT JOIN groups g ON t.group_id = g.id
       LEFT JOIN subtypes s ON t.subgroup_id = s.id
+      LEFT JOIN users u ON t.assigned_to = u.id
+    `;
+
+    // Try by reference first (exact match, case-insensitive, trimmed)
+    let ticket = await queryOne(`
+      ${baseQuery}
       WHERE TRIM(UPPER(t.reference)) = TRIM(UPPER($1))
     `, [cleanId]);
 
@@ -31,11 +38,7 @@ export async function GET(
       const numericId = parseInt(cleanId);
       if (!isNaN(numericId)) {
         ticket = await queryOne(`
-          SELECT t.*, g.code as group_code, g.name as group_name, g.description as group_description,
-                 s.name as subgroup_name, s.code as subgroup_code, s.description as subgroup_description
-          FROM tickets t
-          LEFT JOIN groups g ON t.group_id = g.id
-          LEFT JOIN subtypes s ON t.subgroup_id = s.id
+          ${baseQuery}
           WHERE t.id = $1
         `, [numericId]);
       }
@@ -44,11 +47,7 @@ export async function GET(
     // Try partial reference match (e.g., "3183311" matches "TSR-3183311")
     if (!ticket) {
       ticket = await queryOne(`
-        SELECT t.*, g.code as group_code, g.name as group_name, g.description as group_description,
-               s.name as subgroup_name, s.code as subgroup_code, s.description as subgroup_description
-        FROM tickets t
-        LEFT JOIN groups g ON t.group_id = g.id
-        LEFT JOIN subtypes s ON t.subgroup_id = s.id
+        ${baseQuery}
         WHERE t.reference ILIKE '%' || $1 || '%'
         ORDER BY t.id
         LIMIT 1
@@ -59,10 +58,7 @@ export async function GET(
       return NextResponse.json({ error: 'Incident not found' }, { status: 404 });
     }
 
-    // ============================================================
     // PRIORITY 1: Incident-specific knowledge (directly linked)
-    // These are articles linked to this specific ticket via ticket_articles
-    // ============================================================
     const directlyLinkedArticles = await query(`
       SELECT ka.id, ka.title, ka.status, ka.symptoms, ka.root_cause,
              ka.diagnostic_data, ka.immediate_fix, ka.permanent_fix,
@@ -77,45 +73,39 @@ export async function GET(
       ORDER BY ka.title
     `, [ticket.id]);
 
-    // ============================================================
     // PRIORITY 2: Subgroup knowledge base
-    // Knowledge articles specific to this incident's subgroup
-    // ============================================================
     let subgroupArticles: any[] = [];
     if (ticket.subgroup_id) {
       subgroupArticles = await query(`
         SELECT ka.id, ka.title, ka.status, ka.symptoms, ka.root_cause,
-               ka.diagnostic_data, ka.immediate_fix, ka.permanent_fix,
-               ka.prevention, ka.verification,
-               s.code as subtype_code, s.name as subtype_name,
-               g.code as group_code, g.name as group_name
+                ka.diagnostic_data, ka.immediate_fix, ka.permanent_fix,
+                ka.prevention, ka.verification,
+                s.code as subtype_code, s.name as subtype_name,
+                g.code as group_code, g.name as group_name
         FROM knowledge_articles ka
         LEFT JOIN subtypes s ON ka.subtype_id = s.id
         LEFT JOIN groups g ON ka.group_id = g.id
         WHERE ka.subtype_id = $1
-          AND ka.status = 'published'
+          AND ka.status IN ('approved', 'published')
           AND ka.id NOT IN (SELECT article_id FROM ticket_articles WHERE ticket_id = $2)
         ORDER BY ka.title
       `, [ticket.subgroup_id, ticket.id]);
     }
 
-    // ============================================================
     // PRIORITY 3: Group knowledge base
-    // Knowledge articles for this incident's group (broader context)
-    // ============================================================
     let groupArticles: any[] = [];
     if (ticket.group_id) {
       groupArticles = await query(`
         SELECT ka.id, ka.title, ka.status, ka.symptoms, ka.root_cause,
-               ka.diagnostic_data, ka.immediate_fix, ka.permanent_fix,
-               ka.prevention, ka.verification,
-               s.code as subtype_code, s.name as subtype_name,
-               g.code as group_code, g.name as group_name
+                ka.diagnostic_data, ka.immediate_fix, ka.permanent_fix,
+                ka.prevention, ka.verification,
+                s.code as subtype_code, s.name as subtype_name,
+                g.code as group_code, g.name as group_name
         FROM knowledge_articles ka
         LEFT JOIN subtypes s ON ka.subtype_id = s.id
         LEFT JOIN groups g ON ka.group_id = g.id
         WHERE ka.group_id = $1
-          AND ka.status = 'published'
+          AND ka.status IN ('approved', 'published')
           AND ka.id NOT IN (SELECT article_id FROM ticket_articles WHERE ticket_id = $2)
           AND (ka.subtype_id IS NULL OR ka.subtype_id != $3)
         ORDER BY ka.title
@@ -123,9 +113,7 @@ export async function GET(
       `, [ticket.group_id, ticket.id, ticket.subgroup_id || 0]);
     }
 
-    // ============================================================
     // PRIORITY 4: Similar incidents
-    // ============================================================
     const similarIncidents = await query(`
       SELECT * FROM (
         SELECT t.id, t.reference, t.summary, t.priority, t.severity,
@@ -157,9 +145,7 @@ export async function GET(
       LIMIT 5
     `, [ticket.id, ticket.group_id || 0]);
 
-    // ============================================================
-    // Subgroup-related incidents (for context)
-    // ============================================================
+    // Subgroup-related incidents
     let subgroupIncidents: any[] = [];
     if (ticket.subgroup_id) {
       subgroupIncidents = await query(`
@@ -171,15 +157,28 @@ export async function GET(
       `, [ticket.subgroup_id, ticket.id]);
     }
 
+    // Incident status and assignment history
+    let history: any[] = [];
+    try {
+      history = await query(`
+        SELECT ih.*, u.name as changed_by_name, u.email as changed_by_email
+        FROM incident_history ih
+        LEFT JOIN users u ON ih.changed_by = u.id
+        WHERE ih.ticket_id = $1
+        ORDER BY ih.created_at DESC
+      `, [ticket.id]);
+    } catch {
+      history = [];
+    }
+
     return NextResponse.json({
       ...ticket,
-      // Priority-ordered knowledge
       directly_linked_articles: directlyLinkedArticles,
       subgroup_articles: subgroupArticles,
       group_articles: groupArticles,
-      // Secondary info
       similar_incidents: similarIncidents,
       subgroup_incidents: subgroupIncidents,
+      history,
     });
   } catch (error: any) {
     console.error('Incident lookup error:', error);
@@ -200,19 +199,17 @@ export async function PUT(
   try {
     const body = await request.json();
     const {
-      reference, summary, group_id, subgroup_id, priority, severity,
+      reference, summary, group_id, subgroup_id, priority, severity, status,
       root_cause_category, requester, dynamic_fields,
-      // Problem & Solution knowledge fields
+      assigned_to, internal_owner, temenos_status, temenos_response_date, follow_up_date, temenos_reported_date,
       problem_symptoms, root_cause, diagnostic_information,
       immediate_fix, permanent_fix, prevention, verification,
       temenos_contact, notes,
     } = body;
 
-    // Find the ticket by reference or ID
     let ticketId: number | null = null;
-
     const byRef = await queryOne(
-      'SELECT id FROM tickets WHERE TRIM(UPPER(reference)) = TRIM(UPPER($1))',
+      'SELECT id, status FROM tickets WHERE TRIM(UPPER(reference)) = TRIM(UPPER($1))',
       [cleanId]
     );
     if (byRef) {
@@ -220,7 +217,7 @@ export async function PUT(
     } else {
       const numericId = parseInt(cleanId);
       if (!isNaN(numericId)) {
-        const byId = await queryOne('SELECT id FROM tickets WHERE id = $1', [numericId]);
+        const byId = await queryOne('SELECT id, status FROM tickets WHERE id = $1', [numericId]);
         if (byId) ticketId = byId.id;
       }
     }
@@ -240,8 +237,6 @@ export async function PUT(
       }
     }
 
-    // Use COALESCE to preserve existing values when fields are not provided
-    // This prevents partial updates from accidentally clearing fields
     await queryOne(`
       UPDATE tickets SET
         reference = COALESCE($1, reference),
@@ -250,28 +245,39 @@ export async function PUT(
         subgroup_id = $4,
         priority = COALESCE($5, priority),
         severity = COALESCE($6, severity),
-        root_cause_category = COALESCE($7, root_cause_category),
-        requester = COALESCE($8, requester),
-        custom_fields = COALESCE($9, custom_fields),
-        problem_symptoms = $10,
-        root_cause = $11,
-        diagnostic_information = $12,
-        immediate_fix = $13,
-        permanent_fix = $14,
-        prevention = $15,
-        verification = $16,
-        temenos_contact = $17,
-        notes = $18,
+        status = COALESCE($7, status),
+        root_cause_category = COALESCE($8, root_cause_category),
+        requester = COALESCE($9, requester),
+        custom_fields = COALESCE($10, custom_fields),
+        assigned_to = COALESCE($11, assigned_to),
+        internal_owner = COALESCE($12, internal_owner),
+        temenos_status = COALESCE($13, temenos_status),
+        temenos_response_date = COALESCE($14, temenos_response_date),
+        follow_up_date = COALESCE($15, follow_up_date),
+        temenos_reported_date = COALESCE($16, temenos_reported_date),
+        problem_symptoms = $17,
+        root_cause = $18,
+        diagnostic_information = $19,
+        immediate_fix = $20,
+        permanent_fix = $21,
+        prevention = $22,
+        verification = $23,
+        temenos_contact = $24,
+        notes = $25,
         updated_at = NOW()
-      WHERE id = $19
+      WHERE id = $26
     `, [
       reference || null, summary || null, group_id || null,
       subgroup_id !== undefined ? subgroup_id : null,
-      priority || null, severity || null,
+      priority || null, severity || null, status || null,
       root_cause_category || null, requester || null,
       dynamic_fields ? JSON.stringify(dynamic_fields) : null,
-      // Knowledge fields: use explicit undefined check to allow empty strings
-      // (empty string is a valid value — means user cleared the field)
+      assigned_to !== undefined ? assigned_to : null,
+      internal_owner !== undefined ? internal_owner : null,
+      temenos_status !== undefined ? temenos_status : null,
+      temenos_response_date || null,
+      follow_up_date || null,
+      temenos_reported_date || null,
       problem_symptoms !== undefined ? problem_symptoms : null,
       root_cause !== undefined ? root_cause : null,
       diagnostic_information !== undefined ? diagnostic_information : null,
@@ -284,7 +290,6 @@ export async function PUT(
       ticketId,
     ]);
 
-    // Audit log
     await auditLog({
       userId: auth.user.userId,
       action: 'incident.update',
@@ -293,7 +298,7 @@ export async function PUT(
       details: `Updated incident ${reference || cleanId}`,
     });
 
-    return NextResponse.json({ message: 'Incident updated' });
+    return NextResponse.json({ message: 'Incident updated successfully' });
   } catch (error: any) {
     console.error('Incident update error:', error);
     return NextResponse.json({ error: 'Failed to update incident' }, { status: 500 });
